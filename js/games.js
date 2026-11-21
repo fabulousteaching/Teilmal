@@ -23,8 +23,8 @@ const GAMES = [
     howto: 'Drei Runden gegen fünf Computer-Fahrer. Wo sich die Strecke teilt, fährst du durch einen ?-Würfel – dann erscheint eine Rechnung. Etwas weiter vorne kommen drei Tore mit Ergebnissen: Fahr durchs richtige! Jede richtige Antwort füllt ein Feld, bei der 4. gibt es Turbo. Ein falsches Tor bremst dich kurz. Tipps: Innen durch die Kurve lädt einen Kurven-Turbo auf, und wer genau bei «LOS!» tippt, hat einen Raketenstart.' },
   { id: 'runner', name: 'Welten-Lauf', desc: 'Renn mit deinem Avatar durch fünf Welten!', color: 'teal', art: '<span class="emo">🏃</span>', three: true, modes: ['survive', 'sudden'],
     howto: 'Du rennst mit deinem Avatar auf drei Spuren. Wisch nach links oder rechts (oder Pfeiltasten), um die Spur zu wechseln, und nach oben zum Springen. Spring über Hürden, auf Blöcke und über Abgründe – wer hineinfällt, verliert ein Leben. Immer wieder kommt eine Rechnung, und über den Spuren schweben Blasen mit Ergebnissen: Lauf unter der richtigen durch! Jede richtige Antwort macht dich ein bisschen schneller. Mit der Zeit kommt Neues dazu: Löcher, hohe Wände (zweimal nach oben wischen = Doppelsprung), rollende Fässer, eine schmale Strasse und Kurven (rechtzeitig nach links oder rechts wischen). Auf nur einer Spur schweben die Ergebnisse übereinander: oben = springen, Mitte = weiterlaufen, unten = nach unten wischen (rutschen). Wie früh die schwierigeren Hindernisse kommen, hängt davon ab, wie sicher du im Training rechnest.' },
-  { id: 'maze', name: 'Rechen-Labyrinth', desc: 'Finde den Weg zum Schatz – nur über Zahlen der Reihe.', color: 'purple', art: '<span class="emo">🧭</span>', modes: ['countdown', 'survive'],
-    howto: 'Der Fuchs sucht den Schatz. Er darf nur auf Zahlen der Reihe treten, die oben steht (zum Beispiel 21, 28, 35 bei der 7er-Reihe). Tippe auf ein Nachbarfeld: Gehört die Zahl zur Reihe, geht er hin – sonst zerbricht das Feld. Manche Wege sind Sackgassen!' },
+  { id: 'maze', name: 'Rechen-Labyrinth', desc: 'Lauf mit deinem Avatar durchs Labyrinth – durchs richtige Tor!', color: 'purple', art: '<span class="emo">🧭</span>', three: true, modes: ['speed', 'survive'],
+    howto: 'Du läufst mit deinem Avatar durch einen Heckengarten. In jedem Raum steht oben eine Rechnung, und es gibt drei magische Tore – über jedem schwebt ein Ergebnis. Lauf durch das Tor mit dem richtigen Ergebnis! Ein falsches Tor wirft dich zurück und wächst zu. Hinter dem letzten Tor wartet der Schatz. Steuern: Pfeiltasten (↑ gehen, ← → drehen) oder der Joystick unten.' },
   { id: 'tower', name: 'Turmbau', desc: 'Richtig gerechnet? Dann kommt ein Block – bau den höchsten Turm!', color: 'sun', art: '<span class="emo">🏗️</span>', modes: ['countdown', 'survive'],
     howto: 'Rechne die Aufgabe und tippe das richtige Ergebnis an. Dann hängt ein Block am Kran und schwingt hin und her. Tippe im richtigen Moment ins Bild – der Block fällt auf den Turm. Was übersteht, bricht ab, und der nächste Block wird schmaler. Triffst du genau, gibt es «Perfekt!» und der Block wird wieder etwas breiter.' },
   { id: 'snake', name: 'Zahlen-Schlange', desc: 'Friss das richtige Ergebnis und werde immer länger!', color: 'lime', art: '<span class="emo">🐍</span>', modes: ['sudden'],
@@ -101,12 +101,13 @@ const GAME_MODES = {
       : 'Nur ein Leben: Lauf so weit du kannst. Beim ersten Hindernis, Absturz oder falscher Antwort ist es vorbei.') },
   survive: { name: 'Survive', icon: () => HEART_SVG, short: '3 Leben',
     desc: (id) => id === 'runner' ? '3 Leben – lauf so weit wie möglich. Eine falsche Antwort, ein Hindernis oder ein Sturz in einen Abgrund kostet ein Leben. Jede richtige Antwort macht dich ein bisschen schneller.'
-      : id === 'maze' ? '3 Leben – jede falsche Zahl kostet eines, ebenso zu langes Überlegen. Alle 5 richtigen Schritte hast du etwas weniger Zeit.'
+      : id === 'maze' ? '3 Leben – lauf so weit du kannst. Jedes falsche Tor kostet ein Leben.'
         : id === 'tower' ? '3 Leben – eine falsche Antwort oder ein Block, der danebenfällt, kostet eines. Je höher der Turm, desto schneller schwingt der Kran.'
           : id === 'snake' ? '3 Leben – eine falsche Zahl oder ein Biss in den eigenen Schwanz kostet eines. Alle 5 richtigen wird die Schlange schneller.' : `3 Leben – halte so lange wie möglich durch. Jede falsche Antwort kostet ein Leben. Alle 5 richtigen kommt ein neues Level, und du hast 10 % weniger Zeit pro Rechnung.${id === 'meteor' ? ' Beim letzten Leben fliegt ab und zu ein Ufo vorbei: Triffst du es, gibt es ein Extraleben.' : ''}` },
   speed: { name: 'Speed', icon: () => icon('bolt'), short: '20 richtige',
     desc: (id) => (id === 'memory' ? 'Finde alle Paare so schnell wie möglich. Ein falsches Paar kostet 3 Sekunden.'
       : id === 'puzzle' ? 'Leg alle Teile so schnell wie möglich an den richtigen Platz. Ein falscher Platz kostet 3 Sekunden.'
+      : id === 'maze' ? 'Lauf durch 10 Tore bis zum Schatz – so schnell wie möglich. Ein falsches Tor kostet 3 Sekunden.'
       : id === 'kart' ? 'Drei Runden, so schnell wie möglich. Jede 4. richtige Antwort = Turbo, falsch = kurz langsamer. Deine Zeit kommt in die Bestenliste.'
         : '20 richtige Antworten – so schnell wie möglich. Jede falsche verlangt eine Rechnung mehr.') },
 };
@@ -253,9 +254,9 @@ function runFinish(why) {
 // Sterne: [1, 2, 3 Sterne]; Speed in Sekunden (weniger ist besser)
 const STAR_LIMITS = {
   countdown: { elfmeter: [6, 11, 16], meteor: [6, 11, 16], frog: [6, 11, 16], target: [6, 11, 16], truefalse: [12, 22, 32], runner: [4, 7, 10], maze: [8, 14, 20], tower: [4, 8, 12], snake: [5, 9, 14] },
-  survive: { elfmeter: [6, 12, 20], meteor: [6, 12, 20], frog: [6, 12, 20], target: [6, 12, 20], truefalse: [10, 20, 35], runner: [5, 10, 18], maze: [10, 20, 32], tower: [5, 10, 18], snake: [5, 10, 18] },
+  survive: { elfmeter: [6, 12, 20], meteor: [6, 12, 20], frog: [6, 12, 20], target: [6, 12, 20], truefalse: [10, 20, 35], runner: [5, 10, 18], maze: [5, 10, 18], tower: [5, 10, 18], snake: [5, 10, 18] },
   sudden: { runner: [3, 7, 12], snake: [5, 10, 18] },
-  speed: { elfmeter: [140, 100, 75], meteor: [140, 100, 70], frog: [150, 110, 80], target: [150, 105, 80], truefalse: [90, 60, 40], memory: [80, 50, 32], puzzle: [150, 100, 65] },
+  speed: { elfmeter: [140, 100, 75], meteor: [140, 100, 70], frog: [150, 110, 80], target: [150, 105, 80], truefalse: [90, 60, 40], memory: [80, 50, 32], puzzle: [150, 100, 65], maze: [150, 100, 70] },
 };
 function runStars(r, score) {
   const l = STAR_LIMITS[r.mode]?.[r.id];
@@ -402,7 +403,7 @@ function renderGame() {
 const START_2D = { maze: () => startMaze(), tower: () => startTower(), snake: () => startSnake(), puzzle: () => startPuzzle(), elfmeter: () => startElfmeter(), meteor: () => startMeteor(), frog: () => startFrog(), target: () => startTarget(), memory: () => startMemory(), truefalse: () => startTrueFalse(), duel: () => startDuel(),
   kart: () => { toast('Das Rennen konnte nicht starten. Probier es nochmals.', 'bad'); renderGame(); },
   runner: () => { toast('Der Welten-Lauf konnte nicht starten. Probier es nochmals.', 'bad'); renderGame(); } };
-const START_3D = { elfmeter: () => startElfmeter3D(), meteor: () => startMeteor3D(), frog: () => startFrog3D(), kart: () => startKart3D(), runner: () => startRunner3D() };
+const START_3D = { maze: async () => { if (typeof startMaze3D !== 'function') await w3Script('js/maze3d.js'); return startMaze3D(); }, elfmeter: () => startElfmeter3D(), meteor: () => startMeteor3D(), frog: () => startFrog3D(), kart: () => startKart3D(), runner: () => startRunner3D() };
 
 /* =========================================================
    🏃 Welten-Lauf (3D, mit dem eigenen Avatar; Spiel in js/runner3d.js, Welten in js/runworlds.js)

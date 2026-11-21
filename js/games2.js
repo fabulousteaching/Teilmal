@@ -7,7 +7,7 @@
 
 /** Wie die Punkte im Ergebnis heissen (sonst «richtige Antworten») */
 function g2Noun(id, n) {
-  const W = { maze: ['richtiger Schritt', 'richtige Schritte'], tower: ['Stockwerk', 'Stockwerke'], snake: ['richtige Zahl gefressen', 'richtige Zahlen gefressen'], puzzle: ['Teil', 'Teile'] }[id];
+  const W = { maze: ['richtiges Tor', 'richtige Tore'], tower: ['Stockwerk', 'Stockwerke'], snake: ['richtige Zahl gefressen', 'richtige Zahlen gefressen'], puzzle: ['Teil', 'Teile'] }[id];
   return W ? W[n === 1 ? 0 : 1] : null;
 }
 const g2Pick = (a) => a[Math.floor(Math.random() * a.length)];

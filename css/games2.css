@@ -238,3 +238,34 @@
 .lq-btn { min-height: 76px; border: 0; border-radius: 18px; background: var(--qc); color: #fff; font: 800 clamp(1.6rem, 7vw, 2.2rem) var(--font-display); cursor: pointer; box-shadow: inset 0 -5px 0 rgba(0, 0, 0, .2); touch-action: manipulation; }
 .lq-btn:active { transform: scale(.96); }
 .lq-btn:disabled { opacity: .55; }
+
+/* ---------------- 🧭 Rechen-Labyrinth 3D (js/maze3d.js) ---------------- */
+.mz3 { position: relative; width: 100%; height: min(76vh, 720px); min-height: 420px; border-radius: 22px; overflow: hidden; background: #bfe3ff; user-select: none; -webkit-user-select: none; touch-action: none; }
+.mz3-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.mz3-top { position: absolute; left: 10px; top: 10px; z-index: 3; pointer-events: none; }
+.mz3-top .run-hud { padding: 6px 12px; border-radius: 99px; background: rgba(255, 255, 255, .92); box-shadow: 0 6px 18px -10px rgba(0, 0, 0, .5); }
+.mz3-ask { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); z-index: 4; display: grid; justify-items: center; gap: 2px; padding: 8px 24px 10px; min-width: min(64%, 280px); border-radius: 24px; color: #fff; text-align: center; pointer-events: none;
+  background: linear-gradient(150deg, rgba(49, 46, 129, .9), rgba(15, 23, 42, .85)); border: 1.5px solid rgba(255, 255, 255, .24); box-shadow: 0 20px 44px -20px rgba(0, 0, 0, .75); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.mz3-ask small { font-size: .68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; opacity: .75; }
+.mz3-q { font: 900 clamp(1.7rem, 5.6vw, 2.6rem) var(--font-display); display: flex; gap: .4rem; align-items: center; font-variant-numeric: tabular-nums; }
+.mz3-q .op { color: #c4b5fd; }
+.mz3-q .slot { display: inline-grid; place-items: center; min-width: 1.4em; border-radius: 12px; background: linear-gradient(140deg, #fde68a, #f59e0b); color: #451a03; }
+.mz3-n { font-size: .75rem; opacity: .7; font-weight: 700; }
+.mz3-ask.pop { animation: rn-pop .4s cubic-bezier(.2, 1.4, .4, 1); }
+.mz3-ask.ok { background: linear-gradient(150deg, rgba(22, 163, 74, .92), rgba(20, 83, 45, .86)); }
+.mz3-ask.bad { background: linear-gradient(150deg, rgba(220, 38, 38, .92), rgba(127, 29, 29, .86)); animation: rn-shake .4s; }
+.mz3-flash { position: absolute; inset: 0; pointer-events: none; z-index: 2; opacity: 0; transition: opacity .25s; }
+.mz3-flash.good { background: radial-gradient(circle, transparent 55%, rgba(34, 197, 94, .45)); }
+.mz3-flash.bad { background: radial-gradient(circle, transparent 50%, rgba(239, 68, 68, .5)); }
+.mz3-flash.on { opacity: 1; transition: none; }
+.mz3-help { position: absolute; right: 14px; bottom: 16px; z-index: 4; display: flex; flex-wrap: wrap; gap: 6px 12px; max-width: 60%; padding: 8px 14px; border-radius: 16px; background: rgba(10, 20, 30, .6); color: #fff; font-size: .85rem; pointer-events: none; transition: opacity .6s; }
+.mz3-help b { padding: 0 .3em; border-radius: 6px; background: rgba(255, 255, 255, .2); }
+.mz3-help small { flex-basis: 100%; opacity: .75; }
+.mz3-help.out { opacity: 0; }
+/* Joystick (Labyrinth, Rennen): unten links, gross genug für den Daumen */
+.g2-joy { position: absolute; left: 18px; bottom: 18px; z-index: 5; width: 132px; height: 132px; border-radius: 50%; touch-action: none;
+  background: radial-gradient(circle, rgba(255, 255, 255, .18) 0 40%, rgba(255, 255, 255, .32) 41%, rgba(255, 255, 255, .12) 70%); border: 2px solid rgba(255, 255, 255, .55); box-shadow: 0 8px 24px -10px rgba(0, 0, 0, .5); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.g2-joy i { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #c7d2fe 60%, #818cf8); box-shadow: 0 6px 14px rgba(0, 0, 0, .35); transition: transform .12s; }
+.g2-joy.on i { transition: none; }
+@media (hover: hover) and (pointer: fine) { .g2-joy { opacity: .7; } }
+@media (max-width: 600px) { .mz3 { height: min(72vh, 640px); border-radius: 16px; } .mz3-ask { top: 56px; } .g2-joy { width: 118px; height: 118px; } }
