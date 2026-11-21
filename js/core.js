@@ -422,6 +422,62 @@ const sfx = {
   tick: () => tone([1200], 0.03, 'square', 0.02),
 };
 
+/** Geräusche mit Rauschen (WebAudio, ohne Dateien): Kanone, Platschen, Explosion, Pfeifen, Horn, Möwen, Meer */
+const snd = {
+  ac() { if (!db.settings.sound) return null; try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); return audioCtx; } catch { return null; } },
+  buf: null,
+  noise(ac, dur, loop = false) {
+    if (!this.buf || this.buf.sampleRate !== ac.sampleRate) { const b = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; this.buf = b; }
+    const src = ac.createBufferSource(); src.buffer = this.buf; src.loop = loop || dur > 1.9; return src;
+  },
+  env(g, t0, peak, a, d) { g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t0 + a); g.gain.exponentialRampToValueAtTime(0.0001, t0 + a + d); },
+  /** gefiltertes Rauschen mit Hüllkurve; f0 → f1 = Filterfrequenz am Anfang/Ende */
+  hiss(ac, t0, { type = 'lowpass', f0 = 1000, f1 = f0, q = 0.7, peak = 0.3, a = 0.005, d = 0.3 }) {
+    const n = this.noise(ac, a + d + 0.05), f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = type; f.Q.value = q; f.frequency.setValueAtTime(f0, t0); f.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t0 + a + d);
+    this.env(g, t0, peak, a, d); n.connect(f).connect(g).connect(ac.destination); n.start(t0, Math.random()); n.stop(t0 + a + d + 0.05);
+  },
+  osc(ac, t0, { type = 'sine', f0 = 440, f1 = f0, peak = 0.1, a = 0.01, d = 0.2, lp = 0 }) {
+    const o = ac.createOscillator(), g = ac.createGain(); o.type = type;
+    o.frequency.setValueAtTime(f0, t0); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t0 + a + d);
+    this.env(g, t0, peak, a, d);
+    if (lp) { const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; o.connect(f).connect(g); } else o.connect(g);
+    g.connect(ac.destination); o.start(t0); o.stop(t0 + a + d + 0.05);
+  },
+  at(delay, fn) { const ac = this.ac(); if (ac) fn(ac, ac.currentTime + 0.005 + delay); },
+  /** Kanonenschuss (far = leiser, weiter weg) */
+  cannon(far = false, delay = 0) { this.at(delay, (ac, t) => { const k = far ? 0.45 : 1; this.hiss(ac, t, { f0: 1600, f1: 160, peak: 0.5 * k, d: 0.55 }); this.osc(ac, t, { f0: 130, f1: 36, peak: 0.55 * k, d: 0.4 }); }); },
+  /** Pfeifen der fliegenden Kugel */
+  whistle(dur = 0.45, delay = 0) { this.at(delay, (ac, t) => this.osc(ac, t, { f0: 1900, f1: 520, peak: 0.035, a: 0.06, d: dur })); },
+  /** Platschen ins Wasser */
+  splash(delay = 0) { this.at(delay, (ac, t) => { this.hiss(ac, t, { type: 'bandpass', f0: 2600, f1: 500, q: 0.9, peak: 0.32, a: 0.01, d: 0.55 }); this.osc(ac, t, { f0: 700, f1: 140, peak: 0.12, d: 0.18 }); this.hiss(ac, t + 0.12, { type: 'highpass', f0: 3000, peak: 0.06, d: 0.35 }); }); },
+  /** Explosion / Treffer (big = versenkt) */
+  blast(big = false, delay = 0) {
+    this.at(delay, (ac, t) => {
+      this.hiss(ac, t, { f0: big ? 2400 : 1800, f1: 90, peak: big ? 0.6 : 0.45, a: 0.004, d: big ? 1.1 : 0.6 });
+      this.osc(ac, t, { f0: big ? 95 : 120, f1: 30, peak: big ? 0.6 : 0.45, d: big ? 0.8 : 0.45 });
+      this.osc(ac, t + 0.02, { type: 'triangle', f0: 340, f1: 300, peak: 0.07, d: 0.25 }); // Metall
+      if (big) for (let i = 0; i < 6; i++) this.hiss(ac, t + 0.15 + Math.random() * 0.6, { type: 'bandpass', f0: 1500 + Math.random() * 1500, q: 2, peak: 0.12, a: 0.002, d: 0.06 });
+    });
+  },
+  /** Blubbern beim Sinken */
+  bubbles(delay = 0) { this.at(delay, (ac, t) => { for (let i = 0; i < 7; i++) { const f = 250 + Math.random() * 300; this.osc(ac, t + i * 0.13 + Math.random() * 0.05, { f0: f, f1: f * 2.2, peak: 0.07, d: 0.09 }); } }); },
+  /** Schiffshorn */
+  horn(low = false, delay = 0) { this.at(delay, (ac, t) => { const f = low ? 82 : 110; [f, f * 1.5].forEach((fr) => this.osc(ac, t, { type: 'sawtooth', f0: fr, f1: fr * 0.98, peak: 0.07, a: 0.08, d: 1.0, lp: 700 })); }); },
+  /** Möwe */
+  gull(delay = 0) { this.at(delay, (ac, t) => { for (let i = 0; i < 3; i++) { const st = t + i * 0.2; this.osc(ac, st, { type: 'triangle', f0: 1500, f1: 2300, peak: 0.025, a: 0.03, d: 0.06 }); this.osc(ac, st + 0.08, { type: 'triangle', f0: 2200, f1: 1200, peak: 0.022, a: 0.01, d: 0.1 }); } }); },
+  /** Holz-Klonk (Schiff setzen) */
+  clunk(delay = 0) { this.at(delay, (ac, t) => { this.osc(ac, t, { type: 'triangle', f0: 260, f1: 180, peak: 0.16, a: 0.003, d: 0.12 }); this.hiss(ac, t, { type: 'bandpass', f0: 900, q: 3, peak: 0.08, a: 0.002, d: 0.05 }); }); },
+  /** leises Meeresrauschen im Hintergrund; liefert eine Stopp-Funktion */
+  sea() {
+    const ac = this.ac(); if (!ac) return () => {};
+    const n = this.noise(ac, 2, true), f = ac.createBiquadFilter(), g = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain();
+    f.type = 'lowpass'; f.frequency.value = 520; g.gain.value = 0.028; lfo.frequency.value = 0.13; lg.gain.value = 0.02;
+    lfo.connect(lg).connect(g.gain); n.connect(f).connect(g).connect(ac.destination); n.start(); lfo.start();
+    return () => { try { g.gain.setTargetAtTime(0, ac.currentTime, 0.2); n.stop(ac.currentTime + 0.8); lfo.stop(ac.currentTime + 0.8); } catch { /* */ } };
+  },
+};
+
 /* ---------------- Auswertung des eigenen Stands ---------------- */
 function progSummary(prog = db.prog, keys = null) {
   let n = 0, w = 0, facts = 0, sure = 0, weak = 0, msSum = 0, msN = 0;

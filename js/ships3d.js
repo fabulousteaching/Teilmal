@@ -55,34 +55,53 @@ function sh3Sea(T, host, { R, C, rows, own }) {
   Object.assign(sun.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9, near: 1, far: 40 }); sun.shadow.bias = -0.001;
   scene.add(sun);
   const cellX = (c) => c - (C - 1) / 2, cellZ = (r) => r - (R - 1) / 2;
-  // Himmel mit Sonne über dem Horizont, Nebel in der Horizontfarbe
-  const skyT = tex(cv(16, 256, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#3b82f6'); gr.addColorStop(0.55, '#93c5fd'); gr.addColorStop(0.85, '#fde2c4'); gr.addColorStop(1, '#fbd3a6'); g.fillStyle = gr; g.fillRect(0, 0, w, h); }));
-  const skyDome = new T.Mesh(keep(new T.SphereGeometry(400, 24, 12)), keep(new T.MeshBasicMaterial({ map: skyT, side: T.BackSide, fog: false })));
-  skyDome.rotation.x = 0; scene.add(skyDome);
-  scene.fog = new T.Fog(0xf3dcc4, 22, 170);
+  // Himmel: Kuppel rund um die Kamera, unten Dunst in der gleichen Farbe wie der Nebel → kein harter Horizont
+  const HAZE = 0xe9f4fb;
+  const skyT = tex(cv(16, 512, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); [[0, '#1e5fd8'], [0.3, '#3d86ee'], [0.39, '#5f9ff2'], [0.44, '#93c5f7'], [0.475, '#c8e2f9'], [0.5, '#e9f4fb'], [1, '#e9f4fb']].forEach(([k, c]) => gr.addColorStop(k, c)); g.fillStyle = gr; g.fillRect(0, 0, w, h); }));
+  const skyDome = new T.Mesh(keep(new T.SphereGeometry(1, 40, 24)), keep(new T.MeshBasicMaterial({ map: skyT, side: T.BackSide, fog: false, depthWrite: false })));
+  skyDome.renderOrder = -1; scene.add(skyDome);
+  scene.fog = new T.Fog(HAZE, 20, 60);
   /** Höhe der Wellen an einer Stelle (gleiche Formel für Wasser, Bojen und Schiffe) */
   const waveH = (x, z, t) => -0.06 + Math.sin(x * 0.9 + t * 1.3) * 0.025 + Math.cos(z * 0.8 - t * 1.0) * 0.022 + Math.sin((x + z) * 0.5 + t * 0.7) * 0.012;
-  // Wasser: Low-Poly-Wellen
-  const WS = 40, wGeo = keep(new T.PlaneGeometry(C + 14, R + 14, WS, WS)); wGeo.rotateX(-Math.PI / 2);
-  const wMat = keep(new T.MeshStandardMaterial({ color: 0x1d8fe0, roughness: 0.22, metalness: 0.15, flatShading: true }));
+  // Wasser: ein einziges grosses Low-Poly-Netz – in der Mitte fein, nach aussen grob; die Wellen werden nach aussen
+  // flacher und verschwinden im Dunst (keine Kante zwischen Spielfeld und Hintergrund)
+  const WS = 80, wGeo = keep(new T.PlaneGeometry(2, 2, WS, WS)); wGeo.rotateX(-Math.PI / 2);
+  { const a = wGeo.attributes.position.array, f = (u) => Math.sign(u) * (16 * Math.abs(u) + 184 * Math.abs(u) ** 5); for (let k = 0; k < a.length; k += 3) { a[k] = f(a[k]); a[k + 2] = f(a[k + 2]); } wGeo.computeVertexNormals(); wGeo.computeBoundingSphere(); }
+  const wMat = keep(new T.MeshStandardMaterial({ color: 0x1d8fe0, roughness: 0.24, metalness: 0.12, flatShading: true }));
   const water = new T.Mesh(wGeo, wMat); water.receiveShadow = true; water.position.y = -0.06; scene.add(water);
-  const farSea = new T.Mesh(keep(new T.PlaneGeometry(900, 900)), keep(new T.MeshStandardMaterial({ color: 0x1b86d4, roughness: 0.3, metalness: 0.1 })));
-  farSea.rotation.x = -Math.PI / 2; farSea.position.y = -0.09; scene.add(farSea);
-  // Sonne knapp über dem Horizont mit Glitzerbahn
-  const sunT = tex(cv(128, 128, (g) => { const gr = g.createRadialGradient(64, 64, 6, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,240,1)'); gr.addColorStop(0.25, 'rgba(255,236,170,1)'); gr.addColorStop(0.5, 'rgba(255,190,120,.45)'); gr.addColorStop(1, 'rgba(255,190,120,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); }));
-  const sunS = new T.Sprite(keep(new T.SpriteMaterial({ map: sunT, fog: false, depthWrite: false, transparent: true }))); sunS.scale.set(70, 70, 1); sunS.position.set(60, 16, -330); scene.add(sunS);
-  const glitT = tex(cv(64, 256, (g) => { for (let i = 0; i < 90; i++) { g.fillStyle = `rgba(255,240,200,${0.2 + Math.random() * 0.6})`; g.fillRect(16 + Math.random() * 32 * (i / 90 + 0.2), i * 2.8, 6 + Math.random() * 10, 2); } }));
-  const glit = new T.Mesh(keep(new T.PlaneGeometry(14, 260)), keep(new T.MeshBasicMaterial({ map: glitT, transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: 0.55 })));
-  glit.rotation.x = -Math.PI / 2; glit.position.set(25, -0.07, -160); scene.add(glit);
-  // Insel mit Leuchtturm
-  const isl = new T.Group(); isl.position.set(-48, 0, -120); scene.add(isl);
-  const sand = new T.Mesh(keep(new T.CylinderGeometry(7, 9, 1.2, 14)), keep(new T.MeshStandardMaterial({ color: 0xf2d39b, roughness: 1 }))); sand.position.y = -0.3; isl.add(sand);
-  const hill = new T.Mesh(keep(new T.SphereGeometry(5, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2)), keep(new T.MeshStandardMaterial({ color: 0x4d9a45, roughness: 1, flatShading: true }))); hill.scale.y = 0.6; isl.add(hill);
-  for (let i = 0; i < 4; i++) { const tw = new T.Mesh(keep(new T.CylinderGeometry(0.9 - i * 0.12, 1.0 - i * 0.12, 2.2, 12)), keep(new T.MeshStandardMaterial({ color: i % 2 ? 0xffffff : 0xdc2626 }))); tw.position.set(2.5, 3 + i * 2.2, 1); isl.add(tw); }
-  const lamp = new T.Mesh(keep(new T.SphereGeometry(0.7, 12, 8)), keep(new T.MeshBasicMaterial({ color: 0xfff3b0 }))); lamp.position.set(2.5, 12.2, 1); isl.add(lamp);
-  // Möwen und Schiffe in der Ferne
+  const amp = new Float32Array(wGeo.attributes.position.count);
+  { const a = wGeo.attributes.position.array; for (let k = 0; k < amp.length; k++) { const d = Math.hypot(a[k * 3] * 0.9, a[k * 3 + 2]); amp[k] = d < 8 ? 1 : Math.exp(-(d - 8) / 5.5); } }
+  // Sonne mit Glitzerbahn (Lage wird in fit() an den Bildausschnitt angepasst)
+  const sunT = tex(cv(128, 128, (g) => { const gr = g.createRadialGradient(64, 64, 6, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,240,1)'); gr.addColorStop(0.22, 'rgba(255,240,180,1)'); gr.addColorStop(0.5, 'rgba(255,214,140,.4)'); gr.addColorStop(1, 'rgba(255,214,140,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); }));
+  const sunS = new T.Sprite(keep(new T.SpriteMaterial({ map: sunT, fog: false, depthWrite: false, transparent: true }))); sunS.renderOrder = 0; scene.add(sunS);
+  const glitT = tex(cv(64, 256, (g, w, h) => { for (let i = 0; i < 110; i++) { g.fillStyle = `rgba(255,244,210,${0.25 + Math.random() * 0.6})`; const y = Math.random() * h; g.fillRect(w / 2 - (6 + y / h * 22) * Math.random() * 1.2, y, 5 + Math.random() * 12, 2); } g.globalCompositeOperation = 'destination-in'; const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(0.35, 'rgba(0,0,0,1)'); gr.addColorStop(0.8, 'rgba(0,0,0,.8)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); }));
+  const glit = new T.Mesh(keep(new T.PlaneGeometry(1, 1)), keep(new T.MeshBasicMaterial({ map: glitT, transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: 0.5, fog: false })));
+  glit.rotation.order = 'YXZ'; scene.add(glit);
+  // Wolken
+  const cloudT = tex(cv(256, 96, (g) => { g.fillStyle = '#fff'; [[60, 62, 34], [100, 48, 40], [150, 54, 36], [190, 64, 28], [120, 70, 30], [80, 72, 24]].forEach(([x, y, r]) => { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }); }));
+  const clouds = Array.from({ length: 5 }, (_, i) => { const sp = new T.Sprite(keep(new T.SpriteMaterial({ map: cloudT, fog: false, transparent: true, depthWrite: false, opacity: 0.9 }))); sp.renderOrder = 0; scene.add(sp); return { sp, nx: -0.9 + i * 0.45 + Math.random() * 0.2, ny: 0.25 + Math.random() * 0.6, v: 0.004 + Math.random() * 0.006, s: 0.8 + Math.random() * 0.5 }; });
+  // Insel mit Leuchtturm (nah links hinter dem Spielfeld)
+  const isl = new T.Group(); scene.add(isl);
+  const sand = new T.Mesh(keep(new T.CylinderGeometry(2.4, 3, 0.5, 16)), keep(new T.MeshStandardMaterial({ color: 0xf2d39b, roughness: 1 }))); sand.position.y = -0.1; sand.receiveShadow = true; isl.add(sand);
+  const hill = new T.Mesh(keep(new T.SphereGeometry(1.9, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2)), keep(new T.MeshStandardMaterial({ color: 0x5aa84a, roughness: 1, flatShading: true }))); hill.scale.y = 0.45; hill.position.y = 0.1; isl.add(hill);
+  const rockM = keep(new T.MeshStandardMaterial({ color: 0x9ca3af, roughness: 1, flatShading: true })), rockG = keep(new T.DodecahedronGeometry(0.35, 0));
+  [[2.3, 0.6, 1], [-2.2, -0.8, 0.8], [1.2, -2.1, 1.2], [-1.4, 1.9, 0.7]].forEach(([x, z, k]) => { const r = new T.Mesh(rockG, rockM); r.position.set(x, 0.05, z); r.scale.setScalar(k); r.rotation.set(x, z, k); isl.add(r); });
+  const lt = new T.Group(); lt.position.set(0.3, 0.5, -0.2); isl.add(lt);
+  const redM = keep(new T.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.6 })), whiteM = keep(new T.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.6 }));
+  for (let k = 0; k < 5; k++) { const seg = new T.Mesh(keep(new T.CylinderGeometry(0.42 - (k + 1) * 0.035, 0.42 - k * 0.035, 0.7, 14)), k % 2 ? whiteM : redM); seg.position.y = 0.35 + k * 0.7; seg.castShadow = true; lt.add(seg); }
+  const gal = new T.Mesh(keep(new T.CylinderGeometry(0.42, 0.42, 0.08, 14)), keep(new T.MeshStandardMaterial({ color: 0x1f2937 }))); gal.position.y = 3.55; lt.add(gal);
+  const lampM = keep(new T.MeshBasicMaterial({ color: 0xfff3b0 }));
+  const lamp = new T.Mesh(keep(new T.CylinderGeometry(0.22, 0.22, 0.4, 12)), lampM); lamp.position.y = 3.8; lt.add(lamp);
+  const cap = new T.Mesh(keep(new T.ConeGeometry(0.34, 0.4, 14)), redM); cap.position.y = 4.2; lt.add(cap);
+  const beamG = keep(new T.ConeGeometry(0.32, 3.2, 14, 1, true)); beamG.translate(0, -1.6, 0); beamG.rotateZ(Math.PI / 2);
+  const beamM = keep(new T.MeshBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.16, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, fog: false }));
+  const beam = new T.Group(); beam.position.y = 3.8; lt.add(beam);
+  [0, Math.PI].forEach((ry) => { const b = new T.Mesh(beamG, beamM); b.rotation.y = ry; beam.add(b); });
+  const hut = new T.Mesh(keep(new T.BoxGeometry(0.8, 0.55, 0.6)), whiteM); hut.position.set(-0.75, 0.55, 0.5); hut.castShadow = true; isl.add(hut);
+  const hutR = new T.Mesh(keep(new T.ConeGeometry(0.62, 0.4, 4)), redM); hutR.rotation.y = Math.PI / 4; hutR.position.set(-0.75, 1.02, 0.5); isl.add(hutR);
+  // Möwen und vorbeifahrende Schiffe (knapp hinter dem Spielfeld, nie darüber)
   const gullT = tex(cv(64, 32, (g) => { g.strokeStyle = '#334155'; g.lineWidth = 5; g.lineCap = 'round'; g.beginPath(); g.moveTo(4, 22); g.quadraticCurveTo(18, 4, 32, 18); g.quadraticCurveTo(46, 4, 60, 22); g.stroke(); }));
-  const gulls = Array.from({ length: 6 }, (_, i) => { const sp = new T.Sprite(keep(new T.SpriteMaterial({ map: gullT, transparent: true, depthWrite: false }))); sp.scale.set(2.2, 1.1, 1); scene.add(sp); return { sp, x: -60 + i * 22, y: 7 + (i % 3) * 2.5, z: -45 - (i % 4) * 14, v: 3 + Math.random() * 2, ph: i }; });
+  const gulls = Array.from({ length: 5 }, (_, i) => { const sp = new T.Sprite(keep(new T.SpriteMaterial({ map: gullT, transparent: true, depthWrite: false }))); sp.scale.set(0.8, 0.4, 1); scene.add(sp); return { sp, x: -20 + i * 9, y: 2.6 + (i % 3) * 0.9, dz: 2.5 + (i % 4) * 3, v: (1.2 + Math.random()) * (i % 2 ? 1 : -1), ph: i, lim: 20, z: 0 }; });
   const bgShips = [];
   const base = wGeo.attributes.position.array.slice();
   // Raster auf dem Wasser
@@ -125,7 +144,7 @@ function sh3Sea(T, host, { R, C, rows, own }) {
     dark: keep(new T.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.5 })), funnel: keep(new T.CylinderGeometry(0.09, 0.11, 0.32, 12)), funnelTop: keep(new T.CylinderGeometry(0.095, 0.095, 0.05, 12)),
     turret: keep(new T.CylinderGeometry(0.14, 0.16, 0.12, 12)), mast: keep(new T.CylinderGeometry(0.018, 0.018, 0.5, 6)),
   };
-  for (const [len, x, z, v] of [[4, -30, -38, 1.6], [3, 25, -62, -1.1], [2, -5, -85, 0.8]]) { const m = sh3ShipModel(T, len, mats); m.userData.geos.forEach((g) => keep(g)); m.scale.setScalar(1.6); m.position.set(x, -0.05, z); if (v < 0) m.rotation.y = Math.PI; scene.add(m); bgShips.push({ o: m, v }); }
+  for (const [len, dz, v, sc] of [[3, 3.8, 0.55, 0.8], [4, 8, -0.4, 1], [2, 13.5, 0.3, 1.1]]) { const m = sh3ShipModel(T, len, mats); m.userData.geos.forEach((g) => keep(g)); m.scale.setScalar(sc); if (v < 0) m.rotation.y = Math.PI; scene.add(m); bgShips.push({ o: m, v, dz, lim: 20, x: (Math.random() - 0.5) * 20 }); }
   const blockMat = keep(new T.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.45, metalness: 0.55 }));
   const stripeT = tex(cv(64, 64, (g, w, h) => { g.fillStyle = '#facc15'; g.fillRect(0, 0, w, h); g.fillStyle = '#111827'; for (let i = -2; i < 6; i++) { g.beginPath(); g.moveTo(i * 16, 0); g.lineTo(i * 16 + 8, 0); g.lineTo(i * 16 + 8 + h, h); g.lineTo(i * 16 + h, h); g.fill(); } }));
   const stripeMat = keep(new T.MeshStandardMaterial({ map: stripeT, roughness: 0.6 }));
@@ -160,6 +179,31 @@ function sh3Sea(T, host, { R, C, rows, own }) {
     let lo = 1, hi = 80;
     for (let k = 0; k < 28; k++) { const m = (lo + hi) / 2; place(m); if (fits()) hi = m; else lo = m; }
     place(hi);
+    // Horizont: halb so viel Meer wie bisher zwischen Spielfeld und Horizont, der Rest ist Himmel
+    const cam = camera.position, fwd = new T.Vector3(); camera.getWorldDirection(fwd);
+    const depth = (x, z) => (x - cam.x) * fwd.x + (0 - cam.y) * fwd.y + (z - cam.z) * fwd.z;
+    let yTop = -1; pts.forEach((q) => { v.copy(q).project(camera); yTop = Math.max(yTop, v.y); });
+    const yGeo = Math.tan(p) / tf; // geometrischer Horizont (NDC)
+    const yVis = yTop + (yGeo - yTop) * 0.5;
+    const ground = (nx, ny) => { const rc = new T.Raycaster(); rc.setFromCamera(new T.Vector2(nx, ny), camera); const hit = new T.Vector3(); return rc.ray.intersectPlane(new T.Plane(new T.Vector3(0, 1, 0), 0), hit) ? hit : null; };
+    const gv = ground(0, yVis) || new T.Vector3(xc, 0, zf - 30);
+    const dVis = depth(gv.x, gv.z);
+    scene.fog.near = depth(xc, zf) + 1.5; scene.fog.far = Math.max(scene.fog.near + 6, dVis);
+    const halfAt = (z) => depth(xc, z) * tf * camera.aspect;
+    const RD = Math.hypot(cam.z - gv.z, halfAt(gv.z) * 1.15) + 2;
+    skyDome.position.set(cam.x, 0, cam.z); skyDome.scale.setScalar(RD);
+    const atNdc = (nx, ny, dist) => { const d = new T.Vector3(nx, ny, 0.5).unproject(camera).sub(cam).normalize(); return cam.clone().addScaledVector(d, dist); };
+    // Sonne oben rechts im Himmel, Glitzerbahn darunter auf dem Wasser
+    const sy = yVis + (1 - yVis) * 0.5, sp = atNdc(0.55, sy, RD * 0.9);
+    sunS.position.copy(sp); sunS.scale.setScalar(RD * 0.36);
+    const g0 = new T.Vector3(sp.x, 0, sp.z), g1 = new T.Vector3(xc + (sp.x - xc) * 0.25, 0, zf - 3);
+    glit.position.set((g0.x + g1.x) / 2, -0.03, (g0.z + g1.z) / 2); glit.rotation.set(-Math.PI / 2, Math.atan2(g1.x - g0.x, g1.z - g0.z), 0, 'YXZ'); glit.scale.set(RD * 0.09, g0.distanceTo(g1), 1);
+    clouds.forEach((cl) => { cl.dist = RD * 0.92; cl.ny2 = yVis + (1 - yVis) * cl.ny; cl.sp.scale.set(RD * 0.2 * cl.s, RD * 0.075 * cl.s, 1); });
+    // Insel: links hinter dem Feld
+    const zi = zf - 3.4, xi = Math.min(x0 - 3.2, xc - halfAt(zi) * 0.74);
+    isl.position.set(xi, 0, zi);
+    bgShips.forEach((b) => { b.z = zf - b.dz; b.lim = halfAt(b.z) + 4; });
+    gulls.forEach((g) => { g.z = zf - g.dz; g.lim = halfAt(g.z) + 2; });
   }
   const ro = new ResizeObserver(fit); ro.observe(host); fit();
   function update(dt) {
@@ -167,8 +211,8 @@ function sh3Sea(T, host, { R, C, rows, own }) {
     for (let i = later.length - 1; i >= 0; i--) if (later[i].at <= clock) { const f = later[i].fn; later.splice(i, 1); f(); }
     // Wellen
     const p = wGeo.attributes.position.array;
-    for (let i = 0; i < p.length; i += 3) p[i + 1] = waveH(base[i], base[i + 2], clock) + 0.06;
-    wGeo.attributes.position.needsUpdate = true; wGeo.computeVertexNormals();
+    for (let i = 0, k = 0; i < p.length; i += 3, k++) p[i + 1] = amp[k] > 0.01 ? (waveH(base[i], base[i + 2], clock) + 0.06) * amp[k] : 0;
+    wGeo.attributes.position.needsUpdate = true; // flatShading: Normalen nicht nötig
     if (buoys) {
       for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
         const i = r * C + c, ph = phase[i] + clock * 2.2;
@@ -180,8 +224,10 @@ function sh3Sea(T, host, { R, C, rows, own }) {
       buoys.instanceMatrix.needsUpdate = true; tops.instanceMatrix.needsUpdate = true;
     }
     aimRing.scale.setScalar(1 + Math.sin(clock * 6) * 0.08);
-    for (const g of gulls) { g.x += g.v * dt; if (g.x > 70) g.x = -70; g.sp.position.set(g.x, g.y + Math.sin(clock * 1.3 + g.ph) * 0.6, g.z); g.sp.scale.y = 1.1 * (0.6 + Math.abs(Math.sin(clock * 6 + g.ph)) * 0.6); }
-    for (const b of bgShips) { b.o.position.x += b.v * dt; if (b.o.position.x > 80) b.o.position.x = -80; b.o.position.y = -0.05 + Math.sin(clock * 0.9 + b.v) * 0.08; b.o.rotation.z = Math.sin(clock * 0.8 + b.v) * 0.03; }
+    for (const g of gulls) { g.x += g.v * dt; if (g.x > g.lim) g.x = -g.lim; if (g.x < -g.lim) g.x = g.lim; g.sp.position.set(g.x, g.y + Math.sin(clock * 1.3 + g.ph) * 0.3, g.z + Math.sin(clock * 0.4 + g.ph) * 0.8); g.sp.scale.y = 0.4 * (0.6 + Math.abs(Math.sin(clock * 6 + g.ph)) * 0.6); }
+    for (const b of bgShips) { b.x += b.v * dt; if (b.x > b.lim) b.x = -b.lim; if (b.x < -b.lim) b.x = b.lim; b.o.position.set(b.x, -0.05 + Math.sin(clock * 0.9 + b.dz) * 0.04, b.z); b.o.rotation.z = Math.sin(clock * 0.8 + b.dz) * 0.025; }
+    for (const cl of clouds) { if (!cl.dist) continue; cl.nx += cl.v * dt; if (cl.nx > 1.4) cl.nx = -1.4; const d = new T.Vector3(cl.nx, cl.ny2, 0.5).unproject(camera).sub(camera.position).normalize(); cl.sp.position.copy(camera.position).addScaledVector(d, cl.dist); }
+    beam.rotation.y += dt * 1.1; lampM.color.setHSL(0.14, 1, 0.75 + Math.sin(clock * 2.2) * 0.1);
     for (let i = fx.length - 1; i >= 0; i--) {
       const f = fx[i]; f.t += dt;
       if (f.k === 'drop') { f.v.y -= 9 * dt; f.o.position.addScaledVector(f.v, dt); if (f.o.position.y < 0) { scene.remove(f.o); fx.splice(i, 1); } }

@@ -1010,7 +1010,7 @@ function shPlaceAt(r, c) {
   const ship = { pts, hits: 0, len, hor: s.place.hor };
   pts.forEach(([pr, pc]) => s.me.cells.set(`${pr}:${pc}`, ship));
   s.me.ships.push(ship); s.place.queue.shift();
-  tone([523, 659, 784], 0.06, 'triangle', 0.05);
+  snd.clunk();
   s.r3?.buildOwn(); s.r3?.ghost(null);
   shDraw(); shPlaceUI();
 }
@@ -1030,6 +1030,16 @@ function shRandRest() {
   s.r3?.buildOwn(); s.r3?.ghost(null); shDraw(); shPlaceUI();
 }
 function shResetPlace() { const s = game.sh; if (s?.phase !== 'place') return; s.me = { cells: new Map(), ships: [], shots: new Map() }; s.place.queue = [...SH_FLEET]; s.r3?.buildOwn(); shDraw(); shPlaceUI(); }
+/** Meeresrauschen und ab und zu eine Möwe, solange das Spiel läuft */
+function shAmbient() {
+  if (game.sh?.amb) return;
+  const stop = snd.sea();
+  let tm = 0;
+  const gull = () => { if (!game.sh || game.over || !$('#shcpu')) return; snd.gull(); tm = setTimeout(gull, 9000 + Math.random() * 9000); };
+  tm = setTimeout(gull, 4000);
+  game.sh.amb = () => { stop(); clearTimeout(tm); };
+  game.cleanups = [...(game.cleanups || []), () => game.sh?.amb?.()];
+}
 function shStartPlay() {
   const s = game.sh;
   if (s.phase === 'place' && s.place.queue.length) return;
@@ -1039,6 +1049,7 @@ function shStartPlay() {
   s.r3?.ghost(null); s.r3?.buildOwn();
   shDraw();
   shStatus(s.typing ? 'Du beginnst! Tippe ein Feld an – du rechnest schon so sicher, dass du die Ergebnisse selbst eintippst.' : 'Du beginnst! Tippe ein Feld an.');
+  snd.horn(); shAmbient();
 }
 function shClose() {
   const s = game.sh;
@@ -1072,14 +1083,17 @@ function shAnswer(v) {
     return;
   }
   s.ok++; s.shots++;
+  snd.cannon(false, 0.25); snd.whistle(0.42, 0.33);
   gLater(() => {
     shClose();
     const res = shFire(s.cpu, r, c);
+    if (res === 'miss') snd.splash(); else snd.blast(res === 'sunk');
+    if (res === 'sunk') { snd.bubbles(0.9); }
     shDraw();
     const el = $(`#shcpu .sh-cell[data-r="${r}"][data-c="${c}"]`);
-    if (res === 'miss') { tone([300, 200], 0.1, 'sine', 0.05); shStatus(`${esc(taskText(t, true))} – Wasser! 💧 Jetzt ist der Computer dran.`); s.turn = 'cpu'; s.busy = false; shDraw(); gLater(shCpu, 900); return; }
-    sfx.good(); sparkle(el, 10);
-    if (res === 'sunk') tone([523, 659, 784, 1047], 0.08, 'triangle', 0.07);
+    if (res === 'miss') { shStatus(`${esc(taskText(t, true))} – Wasser! 💧 Jetzt ist der Computer dran.`); s.turn = 'cpu'; s.busy = false; shDraw(); gLater(shCpu, 900); return; }
+    sparkle(el, 10);
+    if (res === 'sunk') gLater(() => tone([523, 659, 784, 1047], 0.08, 'triangle', 0.05), 450);
     if (s.cpu.ships.every((x) => x.hits >= x.len)) { shEnd(true); return; }
     shStatus(`${esc(taskText(t, true))} – ${res === 'sunk' ? '<b>Versenkt!</b> 🚢💥' : '<b>Treffer!</b> 💥'} Du darfst nochmals.`, 'good');
     s.busy = false;
@@ -1119,13 +1133,21 @@ function shCpu() {
     pick = g2Pick(all);
   }
   if (!pick) { s.turn = 'me'; return; }
-  const [r, c] = pick, res = shFire(b, r, c);
+  const [r, c] = pick;
+  // erst Donner und Pfeifen, dann schlägt es ein
+  snd.cannon(true); snd.whistle(0.5, 0.1);
+  gLater(() => shCpuHit(r, c), 650);
+}
+function shCpuHit(r, c) {
+  const s = game.sh;
+  if (!s || game.over || s.turn !== 'cpu') return;
+  const b = s.me, res = shFire(b, r, c);
+  if (res === 'miss') snd.splash(); else { snd.blast(res === 'sunk'); if (res === 'sunk') snd.bubbles(0.9); }
   shDraw();
   const el = $(`#shme .sh-cell[data-k="${r}:${c}"]`);
   el?.classList.add('s-flash');
   const t = `${c + 1} ${SIGN()} ${s.rows[r]} = ${s.rows[r] * (c + 1)}`;
   if (res === 'miss') { shStatus(`Der Computer schiesst auf ${t} – Wasser. <b>Du bist dran!</b>`); s.turn = 'me'; shDraw(); return; }
-  sfx.bad();
   if (s.me.ships.every((x) => x.hits >= x.len)) { shEnd(false); return; }
   shStatus(`Der Computer trifft bei ${t}${res === 'sunk' ? ' und versenkt ein Schiff!' : '!'} Er schiesst nochmals …`, 'bad');
   gLater(shCpu, 1000);
@@ -1135,7 +1157,8 @@ function shEnd(win) {
   game.over = true;
   const acc = s.ok + s.wrong ? Math.round((s.ok / (s.ok + s.wrong)) * 100) : 0;
   const st = !win ? (acc >= 90 ? 1 : 0) : acc >= 95 ? 3 : acc >= 80 ? 2 : 1;
-  if (win) { sfx.win(); confetti(); }
+  s.amb?.(); s.amb = null;
+  if (win) { sfx.win(); confetti(); } else snd.horn(true, 0.6);
   gLater(() => {
     if (ui.view !== 'game') return;
     $('#view').innerHTML = gameShell('ships', gameResultHTML({ st, title: win ? 'Gewonnen – alle Schiffe versenkt! 🚢' : 'Der Computer war schneller 🤖',
