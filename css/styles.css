@@ -921,7 +921,7 @@ td.hard-chips { display: table-cell; }
 .gate-art .emo { font-family: var(--font-emoji); font-size: 3.8rem; }
 @keyframes gate-bob { 50% { transform: translateY(-6px) rotate(-4deg); } }
 .gate-card h1 { font-size: clamp(1.9rem, 5vw, 2.6rem); }
-.gate-how { color: var(--ink-2); max-width: 30rem; }
+.gate-how { white-space: pre-line;  color: var(--ink-2); max-width: 30rem; }
 .gate-opts { display: grid; justify-items: center; gap: .5rem; }
 .gate-reihen { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 30rem; }
 .gate-reihen .reihe { min-width: 54px; min-height: 48px; }

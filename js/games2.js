@@ -1046,16 +1046,29 @@ function shEnd(win) {
 
 /* =========================================================
    🎲 Würfel-Duell gegen den Rechen-Roboter: wer kommt näher an die Zielzahl?
-   Reihen-Würfel (die gewählten Reihen) und Zahlen-Würfel (1–10); einmal pro Runde darf man einen Würfel neu werfen.
-   Das Produkt zählt nur, wenn man es richtig ausrechnet. Wer zuerst 3 Runden gewinnt, gewinnt.
+   Zahlen-Würfel (1–10) und Reihen-Würfel (die gewählten Reihen) als echte 3D-Würfel; einmal pro Runde darf man
+   einen Würfel neu werfen. Das Produkt zählt nur, wenn man es richtig ausrechnet (sehr sichere Kinder tippen es
+   selbst ein). Ein Zahlenstrahl zeigt, wer näher dran ist. Wer zuerst 3 Runden gewinnt, gewinnt.
    ========================================================= */
 const DC_WIN = 3;
+const DC_STEPS = [
+  ['🎯', 'Zielzahl ansehen', 'Oben in der Mitte steht die Zielzahl.'],
+  ['🎲', 'Würfeln', 'Du würfelst mit zwei Würfeln: einem Zahlen-Würfel (1–10) und einem Reihen-Würfel.'],
+  ['🔄', 'Behalten oder neu werfen', 'Gefällt dir ein Würfel nicht? Tippe ihn an – er wird einmal neu geworfen. Sonst tippe «Behalten».'],
+  ['✖️', 'Ausrechnen', 'Rechne deine zwei Zahlen mal. Nur ein richtiges Ergebnis zählt!'],
+  ['🏆', 'Wer ist näher?', 'Robo würfelt auch. Wessen Ergebnis näher an der Zielzahl liegt, gewinnt die Runde. Wer zuerst 3 Runden hat, gewinnt.'],
+];
+function dcHelpHTML() {
+  return `<div class="dc-help" id="dchelp"><div class="dc-help-card"><h2>So geht das Würfel-Duell</h2>
+    <ol>${DC_STEPS.map(([e, h, t], i) => `<li><span class="dc-step">${i + 1}</span><span class="dc-emo">${e}</span><div><b>${h}</b><small>${t}</small></div></li>`).join('')}</ol>
+    <button type="button" class="btn primary big" data-action="dc-help-close">Los geht's!</button></div></div>`;
+}
 function startDice() {
   const rows = practiceSettings().reihen.slice();
-  Object.assign(game, { dc: { rows, pts: [0, 0], round: 0, phase: 'roll', me: null, cpu: null, rerolled: false, target: 0, ok: 0, wrong: 0, t: null }, over: false });
+  Object.assign(game, { dc: { rows, pts: [0, 0], round: 0, phase: 'roll', me: null, cpu: null, rerolled: false, target: 0, ok: 0, wrong: 0, t: null, typing: g2Typing(), typed: '' }, over: false });
   $('#view').innerHTML = gameShell('dice', `
     <div class="dc-play">
-    <div class="dc-score"><span class="dc-p me">Du <b id="dcme">0</b></span><span class="dc-vs">bis ${DC_WIN}</span><span class="dc-p cpu"><b id="dccpu">0</b> Robo 🤖</span></div>
+    <div class="dc-score"><span class="dc-p me">Du <b id="dcme">0</b></span><span class="dc-vs">bis ${DC_WIN}</span><span class="dc-p cpu"><b id="dccpu">0</b> Robo 🤖</span><button type="button" class="dc-q" data-action="dc-help" aria-label="So geht's">?</button></div>
     <div class="dc-target"><small>Zielzahl</small><b id="dctarget">?</b></div>
     <div class="dc-table">
       <div class="dc-side me"><p class="label">Deine Würfel</p><div class="dc-dice" id="dcmine"></div><div class="dc-res" id="dcmeres"></div></div>
@@ -1063,36 +1076,74 @@ function startDice() {
     </div>
     <div class="dc-ctrl" id="dcctrl"></div>
     </div>
-    <p class="mode-hint">Würfle, dann entscheide: behalten oder einen Würfel nochmals werfen (tippe ihn an). Rechne dein Produkt richtig aus – wer näher an der Zielzahl ist, gewinnt die Runde.</p>`);
+    <p class="mode-hint">Würfle, dann entscheide: behalten oder einen Würfel nochmals werfen (tippe ihn an). Rechne dein Produkt richtig aus – wer näher an der Zielzahl ist, gewinnt die Runde. Der ?-Knopf zeigt die Anleitung.</p>`);
+  setGameKeys((e) => {
+    const d = game.dc;
+    if (!d) return;
+    if (d.phase === 'calc' && d.typing) {
+      if (/^[0-9]$/.test(e.key)) { e.preventDefault(); game.typeKey?.(e.key); }
+      else if (e.key === 'Backspace') { e.preventDefault(); game.typeKey?.('back'); }
+      else if (e.key === 'Enter') { e.preventDefault(); game.typeKey?.('ok'); }
+    } else if ((e.key === ' ' || e.key === 'Enter') && d.phase === 'roll' && !$('#dchelp')) { e.preventDefault(); dcDoRoll(); }
+  });
   dcRound();
+  if (!db.settings.dcHelpSeen) dcHelp(true);
 }
-const dcFace = (v, cls = '') => `<span class="dc-die ${cls}">${v}</span>`;
+function dcHelp(on) {
+  $('#dchelp')?.remove();
+  if (!on) { db.settings.dcHelpSeen = true; saveDB(); return; }
+  $('.game-dice')?.insertAdjacentHTML('beforeend', dcHelpHTML());
+}
+/** Ein 3D-Würfel (CSS): vorne das Ergebnis, auf den anderen Seiten andere mögliche Werte */
+function dcDieHTML(v, kind, opts = {}) {
+  const pool = kind === 'row' ? game.dc.rows : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const other = () => (v === '?' ? '?' : g2Pick(pool));
+  const faces = [v, other(), other(), other(), other(), other()].map((x, i) => `<span class="f${i + 1}">${x}</span>`).join('');
+  const tag = opts.pick ? 'button type="button"' : 'div';
+  return `<${tag} class="d3 ${kind} ${v === '?' ? 'idle' : ''} ${opts.pick ? 'pick' : ''}" ${opts.pick ? `data-action="dc-reroll" data-i="${opts.i}" aria-label="Würfel neu werfen"` : ''}>
+    <span class="d3-cube">${faces}</span><i class="d3-shadow"></i><small>${kind === 'row' ? 'Reihe' : '1–10'}</small></${opts.pick ? 'button' : 'div'}>`;
+}
+/** Würfel anzeigen; roll: Liste der Würfel (Index), die gerade geworfen werden */
+function dcShow(el, dice, roll = [0, 1], pick = false) {
+  const host = $(el);
+  if (!host) return;
+  host.innerHTML = dice.map((v, i) => dcDieHTML(v, i ? 'row' : 'num', { pick, i })).join('');
+  [...host.querySelectorAll('.d3')].forEach((d, i) => {
+    if (!roll.includes(i) || reduceMotion()) return;
+    const cube = d.querySelector('.d3-cube'), sh = d.querySelector('.d3-shadow');
+    const turns = () => (2 + Math.floor(Math.random() * 2)) * 360 * (Math.random() < 0.5 ? -1 : 1);
+    cube.animate([
+      { transform: `translateY(-70px) rotateX(${turns() + 40}deg) rotateY(${turns() - 30}deg) rotateZ(${Math.random() * 90}deg)` },
+      { transform: 'translateY(4px) rotateX(-12deg) rotateY(10deg) rotateZ(0deg)', offset: 0.72 },
+      { transform: 'translateY(-10px) rotateX(5deg) rotateY(-4deg)', offset: 0.86 },
+      { transform: 'translateY(0) rotateX(0) rotateY(0) rotateZ(0)' },
+    ], { duration: 950 + i * 120, easing: 'cubic-bezier(.25,.8,.35,1)' });
+    sh.animate([{ transform: 'scale(.4)', opacity: 0.2 }, { transform: 'scale(1)', opacity: 1, offset: 0.72 }, { transform: 'scale(.85)', offset: 0.86 }, { transform: 'scale(1)', opacity: 1 }], { duration: 950 + i * 120 });
+  });
+}
 const dcOff = (v) => { const n = Math.abs(v - game.dc.target); return n === 0 ? 'genau getroffen! 🎯' : `${n} weg vom Ziel`; };
+const dcStep = (n, text) => `<p class="dc-msg"><span class="dc-step">${n}</span>${text}</p>`;
 function dcRound() {
   const d = game.dc;
-  d.round++; d.phase = 'roll'; d.me = null; d.cpu = null; d.rerolled = false; d.t = null;
+  d.round++; d.phase = 'roll'; d.me = null; d.cpu = null; d.rerolled = false; d.t = null; d.myVal = null;
   // Zielzahl: ein mögliches Produkt in der Mitte des Bereichs
   const r = g2Pick(d.rows), k = 2 + Math.floor(Math.random() * 8);
-  d.target = r * k + g2Pick([-2, -1, 0, 1, 2, 3]);
-  d.target = Math.max(4, d.target);
+  d.target = Math.max(4, r * k + g2Pick([-2, -1, 0, 1, 2, 3]));
   $('#dctarget').textContent = d.target;
   $('#dctarget').parentNode.classList.remove('pop'); void $('#dctarget').offsetWidth; $('#dctarget').parentNode.classList.add('pop');
-  $('#dcmine').innerHTML = dcFace('?', 'idle') + dcFace('?', 'idle');
-  $('#dccpud').innerHTML = dcFace('?', 'idle') + dcFace('?', 'idle');
+  dcShow('#dcmine', ['?', '?'], []);
+  dcShow('#dccpud', ['?', '?'], []);
   $('#dcmeres').innerHTML = ''; $('#dccpures').innerHTML = '';
-  $('#dcctrl').innerHTML = `<p class="dc-msg">Runde ${d.round}: Wer kommt näher an <b>${d.target}</b>?</p><button type="button" class="btn primary big" data-action="dc-roll">🎲 Würfeln</button>`;
+  $('#dcctrl').innerHTML = `${dcStep(1, `Runde ${d.round}: Die Zielzahl ist <b>${d.target}</b>. Wer kommt näher?`)}<button type="button" class="btn primary big dc-go" data-action="dc-roll">🎲 Würfeln</button>`;
 }
 const dcRoll = () => [1 + Math.floor(Math.random() * 10), g2Pick(game.dc.rows)]; // [Zahlen-Würfel, Reihen-Würfel]
-function dcShow(el, dice, roll = true, pick = false) {
-  $(el).innerHTML = dice.map((v, i) => `<button type="button" class="dc-die ${roll ? 'roll' : ''} ${i ? 'row' : 'num'}" data-k="${i ? 'Reihe' : '1–10'}" ${pick ? `data-action="dc-reroll" data-i="${i}"` : 'disabled'} style="animation-delay:${i * 90}ms">${v}</button>`).join('');
-}
 function dcDoRoll() {
   const d = game.dc;
   if (d.phase !== 'roll') return;
   d.me = dcRoll(); d.phase = 'decide';
   tone([440, 520, 620], 0.05, 'square', 0.03);
-  dcShow('#dcmine', d.me, true, true);
-  $('#dcctrl').innerHTML = `<p class="dc-msg">Zielzahl <b>${d.target}</b>. Behalten – oder tippe einen Würfel an, um ihn <b>einmal</b> neu zu werfen.</p><button type="button" class="btn primary big" data-action="dc-keep">✓ Behalten</button>`;
+  dcShow('#dcmine', d.me, [0, 1], true);
+  $('#dcctrl').innerHTML = `${dcStep(2, `Gefällt dir ein Würfel nicht? <b>Tippe ihn an</b> – er wird einmal neu geworfen. Sonst:`)}<button type="button" class="btn primary big" data-action="dc-keep">✓ Behalten</button>`;
 }
 function dcReroll(i) {
   const d = game.dc;
@@ -1100,18 +1151,21 @@ function dcReroll(i) {
   d.rerolled = true;
   d.me[i] = i === 1 ? g2Pick(d.rows) : 1 + Math.floor(Math.random() * 10);
   tone([520, 620], 0.05, 'square', 0.03);
-  dcShow('#dcmine', d.me, false, false);
-  $$('#dcmine .dc-die')[i]?.classList.add('roll');
-  dcAsk();
+  dcShow('#dcmine', d.me, [i], false);
+  gLater(dcAsk, 900);
 }
 function dcAsk() {
   const d = game.dc;
+  if (d.phase !== 'decide') return;
   d.phase = 'calc';
   const t = makeTask(d.me[0], d.me[1], 'mul');
   t.shownAt = performance.now(); d.t = t;
-  dcShow('#dcmine', d.me, false, false);
-  const vals = choicesFor(t, 4);
-  $('#dcctrl').innerHTML = `<p class="dc-msg">Wie viel ist das?</p><div class="task">${taskHTML(t, '<span class="slot">?</span>')}</div><div class="dc-ans">${vals.map((v) => `<button type="button" class="dc-a" data-action="dc-answer" data-v="${v}">${v}</button>`).join('')}</div>`;
+  $$('#dcmine .d3').forEach((x) => { x.classList.remove('pick'); x.removeAttribute('data-action'); });
+  const vals = d.typing ? [] : choicesFor(t, 4);
+  $('#dcctrl').innerHTML = `${dcStep(3, 'Rechne aus: Wie viel ist das?')}<div class="task">${taskHTML(t, '<span class="slot">?</span>')}</div>
+    ${d.typing ? g2TypeHTML('dctyped') : `<div class="dc-ans">${vals.map((v) => `<button type="button" class="dc-a" data-action="dc-answer" data-v="${v}">${v}</button>`).join('')}</div>`}`;
+  d.typed = '';
+  game.typeKey = (k) => { const dd = game.dc; if (dd?.phase === 'calc') dd.typed = g2Type(dd.typed, k, $('#dctyped'), (v) => dcAnswer(v)); };
 }
 function dcAnswer(v) {
   const d = game.dc;
@@ -1120,27 +1174,28 @@ function dcAnswer(v) {
   const t = d.t, ok = Number(v) === t.answer;
   recordAnswer(t, v, performance.now() - t.shownAt);
   $$('.dc-a').forEach((b) => { b.disabled = true; if (Number(b.dataset.v) === t.answer) b.classList.add('right'); else if (b.dataset.v === String(v)) b.classList.add('wrong'); });
+  $$('#dcctrl .cs-key').forEach((b) => { b.disabled = true; });
+  const ty = $('#dctyped'); if (ty) { ty.classList.add(ok ? 'good' : 'bad'); if (!ok) ty.innerHTML = `${esc(String(v))} <small>→ ${t.answer}</small>`; }
   if (ok) { d.ok++; sfx.good(); } else { d.wrong++; sfx.bad(); }
   d.myVal = ok ? t.answer : null;
   $('#dcmeres').innerHTML = ok ? `<b>${t.answer}</b><small>${t.a} ${SIGN()} ${t.b}</small><small>${dcOff(t.answer)}</small>` : `<b class="bust">✗</b><small>falsch gerechnet</small><small>${esc(taskText(t, true))} – zählt nicht</small>`;
-  gLater(dcCpu, 1100);
+  gLater(dcCpu, 1200);
 }
 /** Robo: würfelt; ist er weit weg, wirft er den Würfel neu, der am meisten hilft */
 function dcCpu() {
   const d = game.dc;
   let c = dcRoll();
-  dcShow('#dccpud', c, true, false);
-  $('#dcctrl').innerHTML = '<p class="dc-msg">Robo würfelt …</p>';
+  dcShow('#dccpud', c, [0, 1], false);
+  $('#dcctrl').innerHTML = dcStep(4, 'Jetzt würfelt Robo …');
   gLater(() => {
     const dist = (a, b) => Math.abs(a * b - d.target);
     if (dist(c[0], c[1]) > 6) {
       const exp0 = Array.from({ length: 10 }, (_, i) => dist(i + 1, c[1])).reduce((s, x) => s + x, 0) / 10, exp1 = d.rows.reduce((s, r) => s + dist(c[0], r), 0) / d.rows.length;
-      const cur = dist(c[0], c[1]);
-      if (Math.min(exp0, exp1) < cur) {
+      if (Math.min(exp0, exp1) < dist(c[0], c[1])) {
         const i = exp0 < exp1 ? 0 : 1;
         c = [...c]; c[i] = i === 1 ? g2Pick(d.rows) : 1 + Math.floor(Math.random() * 10);
-        dcShow('#dccpud', c, false, false); $$('#dccpud .dc-die')[i]?.classList.add('roll');
-        $('#dcctrl').innerHTML = '<p class="dc-msg">Robo wirft einen Würfel neu …</p>';
+        dcShow('#dccpud', c, [i], false);
+        $('#dcctrl').innerHTML = dcStep(4, 'Robo wirft einen Würfel neu …');
       }
     }
     gLater(() => {
@@ -1148,19 +1203,34 @@ function dcCpu() {
       d.cpu = c; d.cpuVal = cv;
       $('#dccpures').innerHTML = `<b>${cv}</b><small>${c[0]} ${SIGN()} ${c[1]}</small><small>${dcOff(cv)}</small>`;
       dcJudge();
-    }, 900);
-  }, 1000);
+    }, 1150);
+  }, 1250);
+}
+/** Zahlenstrahl (SVG): Zielzahl in der Mitte, dein Ergebnis oben, Robos Ergebnis unten; die Balken zeigen den Abstand */
+function dcLineHTML() {
+  const d = game.dc, vals = [d.target, d.cpuVal, ...(d.myVal != null ? [d.myVal] : [])];
+  const lo = Math.max(0, Math.min(...vals) - 5), hi = Math.max(...vals) + 5, X = (v) => 30 + ((v - lo) / (hi - lo)) * 380;
+  const bar = (v, y, col) => `<rect x="${Math.min(X(v), X(d.target))}" y="${y}" width="${Math.max(2, Math.abs(X(v) - X(d.target)))}" height="7" rx="3.5" fill="${col}"/>`;
+  const tag = (v, y, col, lab, up) => `<g><line x1="${X(v)}" x2="${X(v)}" y1="${up ? y + 26 : 44}" y2="${up ? 44 : y}" stroke="${col}" stroke-width="2"/><rect x="${X(v) - 19}" y="${y}" width="38" height="26" rx="8" fill="#fff" stroke="${col}" stroke-width="2.5"/><text x="${X(v)}" y="${y + 18}" text-anchor="middle" font-weight="800" font-size="15" fill="${col}">${v}</text><text x="${X(v)}" y="${up ? y - 4 : y + 40}" text-anchor="middle" font-weight="800" font-size="10" fill="${col}">${lab}</text></g>`;
+  const me = 'var(--c)', cpu = '#475569';
+  return `<svg class="dc-line" viewBox="0 -12 440 116" aria-hidden="true">
+    <rect x="20" y="41" width="400" height="6" rx="3" fill="rgba(100,116,139,.22)"/>
+    ${d.myVal != null ? bar(d.myVal, 33, me) : ''}${bar(d.cpuVal, 48, cpu)}
+    ${d.myVal != null ? tag(d.myVal, 6, me, 'DU', true) : ''}${tag(d.cpuVal, 64, cpu, 'ROBO', false)}
+    <circle cx="${X(d.target)}" cy="44" r="15" fill="#fde68a" stroke="#b45309" stroke-width="2.5"/><text x="${X(d.target)}" y="49" text-anchor="middle" font-weight="900" font-size="13" fill="#78350f">${d.target}</text>
+  </svg>`;
 }
 function dcJudge() {
   const d = game.dc;
   const me = d.myVal == null ? Infinity : Math.abs(d.myVal - d.target), cpu = Math.abs(d.cpuVal - d.target);
   let msg;
-  if (me < cpu) { d.pts[0]++; msg = '<b>Du gewinnst die Runde!</b> 🎉'; tone([660, 880, 1175], 0.07, 'triangle', 0.07); }
-  else if (cpu < me) { d.pts[1]++; msg = 'Robo gewinnt die Runde.'; tone([330, 247], 0.1, 'sawtooth', 0.04); }
+  if (me < cpu) { d.pts[0]++; msg = `<b>Du gewinnst die Runde!</b> 🎉 Du bist ${me === 0 ? 'genau auf dem Ziel' : `nur ${me} weg`}, Robo ${cpu}.`; tone([660, 880, 1175], 0.07, 'triangle', 0.07); }
+  else if (cpu < me) { d.pts[1]++; msg = d.myVal == null ? 'Robo gewinnt die Runde – dein Ergebnis war falsch gerechnet.' : `Robo gewinnt die Runde: Robo ist ${cpu} weg, du ${me}.`; tone([330, 247], 0.1, 'sawtooth', 0.04); }
   else msg = 'Gleich nah – unentschieden!';
   $('#dcme').textContent = d.pts[0]; $('#dccpu').textContent = d.pts[1];
-  if (d.pts[0] >= DC_WIN || d.pts[1] >= DC_WIN) { $('#dcctrl').innerHTML = `<p class="dc-msg">${msg}</p>`; gLater(dcEnd, 1400); return; }
-  $('#dcctrl').innerHTML = `<p class="dc-msg">${msg}</p><button type="button" class="btn primary big" data-action="dc-next">Nächste Runde ${icon('right')}</button>`;
+  const line = dcLineHTML();
+  if (d.pts[0] >= DC_WIN || d.pts[1] >= DC_WIN) { $('#dcctrl').innerHTML = `${line}${dcStep(5, msg)}`; gLater(dcEnd, 2000); return; }
+  $('#dcctrl').innerHTML = `${line}${dcStep(5, msg)}<button type="button" class="btn primary big" data-action="dc-next">Nächste Runde ${icon('right')}</button>`;
 }
 function dcEnd() {
   const d = game.dc, win = d.pts[0] > d.pts[1];

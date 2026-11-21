@@ -88,6 +88,8 @@ const actions = {
   'dc-keep': () => { if (game.dc?.phase === 'decide') dcAsk(); },
   'dc-answer': (el) => dcAnswer(el.dataset.v),
   'dc-next': () => dcRound(),
+  'dc-help': () => dcHelp(true),
+  'dc-help-close': () => dcHelp(false),
   'cs-key': (el) => csKey(el.dataset.k),
   'g2-key': (el) => game.typeKey?.(el.dataset.k),
   'pz-big': (el) => { db.settings.pzBig = el.dataset.v === '1'; saveDB(); renderGame(); },
