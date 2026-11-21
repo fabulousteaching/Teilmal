@@ -669,22 +669,23 @@ function snDraw(T) {
 }
 
 /* =========================================================
-   🧩 1×1-Tafel-Puzzle: die ganze Einmaleins-Tafel (klein 10 × 10 oder gross 20 × 10), einzelne Ergebnisse fehlen.
-   Unten liegen die fehlenden Ergebnisse – ziehen oder antippen und dann das Feld antippen.
-   Ein Kärtchen passt in jedes leere Feld mit diesem Ergebnis (12 passt zu 3 · 4 und zu 2 · 6).
+   🧩 1×1-Tafel-Puzzle: eine leere Einmaleins-Tafel (klein 10 × 10 oder gross 20 × 10) – nur die Reihen- und
+   Spaltenzahlen stehen da. Einzelne Zielfelder sind markiert (nie nebeneinander), unten liegen ihre Ergebnisse.
+   Weil keine anderen Ergebnisse in der Tafel stehen, hilft kein Muster: man muss Reihe · Spalte ausrechnen.
+   Tippt man ein Feld an (oder zieht ein Ergebnis darüber), leuchten seine Reihe und Spalte auf.
    ========================================================= */
 const PZ_PENALTY = 3000;
 const pzBig = () => (db.settings.pzBig ?? practiceSettings().big) === true;
 function startPuzzle() {
-  const big = pzBig(), R = big ? 20 : 10, n = big ? 16 : 12;
+  const big = pzBig(), R = big ? 20 : 10, n = big ? 14 : 12;
   const ps = practiceSettings();
-  // fehlende Felder: vor allem aus den gewählten Reihen, schwierige Rechnungen öfter
+  // Zielfelder: vor allem aus den gewählten Reihen, schwierige Rechnungen öfter, nie zwei Felder nebeneinander
   const sel = new Set(ps.reihen.filter((r) => r <= R));
   const cand = [];
   for (let r = 1; r <= R; r++) for (let c = 1; c <= 10; c++) {
     let w = sel.has(r) || sel.has(c) ? 4 : 1;
-    if (r === 1 || c === 1) w *= 0.25; else if (r === 10 || c === 10) w *= 0.5;
-    const lv = typeof levelOf === 'function' ? levelOf(db.prog.f[`${r}x${c}`]) : 'none';
+    if (r === 1 || c === 1) w *= 0.15; else if (r === 10 || c === 10) w *= 0.4;
+    const lv = typeof levelOf === 'function' ? levelOf(db.prog.f[`${c}x${r}`]) : 'none';
     if (lv === 'weak' || lv === 'shaky') w *= 2;
     cand.push({ r, c, w });
   }
@@ -692,23 +693,45 @@ function startPuzzle() {
   while (miss.length < n && cand.length) {
     let t = Math.random() * cand.reduce((s, x) => s + x.w, 0), i = 0;
     for (; i < cand.length - 1; i++) { t -= cand[i].w; if (t <= 0) break; }
-    miss.push(cand.splice(i, 1)[0]);
+    const m = cand.splice(i, 1)[0];
+    miss.push(m);
+    // Nachbarn (auch schräg) und gleiche Ergebnisse fallen weg
+    for (let k = cand.length - 1; k >= 0; k--) { const o = cand[k]; if ((Math.abs(o.r - m.r) <= 1 && Math.abs(o.c - m.c) <= 1) || o.r * o.c === m.r * m.c) cand.splice(k, 1); }
   }
   const gone = new Set(miss.map((m) => `${m.r}:${m.c}`));
   const tiles = shuffle(miss.map((m) => m.r * m.c));
-  Object.assign(game, { pz: { R, gone, filled: new Set(), tiles, used: new Set(), sel: null }, over: false });
+  Object.assign(game, { pz: { R, gone, tiles, used: new Set(), sel: null, aim: null }, over: false });
   runStart('puzzle', { goal: tiles.length });
   $('#view').innerHTML = gameShell('puzzle', `
     ${runHudHTML('bar-hud')}
     <div class="pz-wrap">
       <div class="pz-table ${big ? 'big' : ''}" id="pztable">
-        <div class="pz-h corner">${SIGN()}</div>${Array.from({ length: 10 }, (_, i) => `<div class="pz-h col">${i + 1}</div>`).join('')}
-        ${Array.from({ length: R }, (_, ri) => { const r = ri + 1; return `<div class="pz-h row ${sel.has(r) ? 'sel' : ''}">${r}</div>${Array.from({ length: 10 }, (_, ci) => { const c = ci + 1, k = `${r}:${c}`; return gone.has(k) ? `<div class="pz-cell empty" data-r="${r}" data-c="${c}"></div>` : `<div class="pz-cell given${r === c ? ' sq' : ''}">${r * c}</div>`; }).join('')}`; }).join('')}
+        <div class="pz-h corner">${SIGN()}</div>${Array.from({ length: 10 }, (_, i) => `<div class="pz-h col" data-c="${i + 1}">${i + 1}</div>`).join('')}
+        ${Array.from({ length: R }, (_, ri) => { const r = ri + 1; return `<div class="pz-h row ${sel.has(r) ? 'sel' : ''}" data-r="${r}">${r}</div>${Array.from({ length: 10 }, (_, ci) => { const c = ci + 1; return gone.has(`${r}:${c}`) ? `<div class="pz-cell empty" data-r="${r}" data-c="${c}"></div>` : `<div class="pz-cell blank" data-r="${r}" data-c="${c}"></div>`; }).join('')}`; }).join('')}
       </div>
     </div>
-    <div class="pz-dock"><p class="pz-dock-h">Wohin gehören diese Ergebnisse?</p><div class="pz-tray" id="pztray">${tiles.map((v, i) => `<button type="button" class="pz-tile" data-t="${i}">${v}</button>`).join('')}</div></div>
-    <p class="mode-hint">Zieh ein Ergebnis in das richtige leere Feld – oder tippe zuerst das Ergebnis und dann das Feld an. Ein falscher Platz kostet 3 Sekunden.</p>`);
+    <div class="pz-dock"><p class="pz-dock-h" id="pzhint">Tippe ein leeres Feld an und rechne: Reihe · Spalte</p><div class="pz-tray" id="pztray">${tiles.map((v, i) => `<button type="button" class="pz-tile" data-t="${i}">${v}</button>`).join('')}</div></div>
+    <p class="mode-hint">In der Tafel stehen keine Ergebnisse – rechne für jedes markierte Feld Reihe · Spalte aus und setz das passende Ergebnis hinein (ziehen oder antippen). Ein falscher Platz kostet 3 Sekunden.</p>`);
   pzBind();
+}
+/** Reihe und Spalte eines Feldes hervorheben (Fadenkreuz) */
+function pzCross(cell) {
+  const tb = $('#pztable');
+  if (!tb) return;
+  $$('#pztable .x-on').forEach((x) => x.classList.remove('x-on'));
+  if (!cell) return;
+  const r = cell.dataset.r, c = cell.dataset.c;
+  $$(`#pztable [data-r="${r}"], #pztable [data-c="${c}"]`).forEach((x) => { if (x.matches('.pz-h') || (x.dataset.r === r) !== (x.dataset.c === c)) x.classList.add('x-on'); });
+  cell.classList.add('x-on');
+}
+function pzAim(cell) {
+  const pz = game.pz;
+  $$('#pztable .aim').forEach((x) => x.classList.remove('aim'));
+  pz.aim = cell;
+  if (cell) cell.classList.add('aim');
+  pzCross(cell);
+  const h = $('#pzhint');
+  if (h) h.innerHTML = cell ? `Reihe <b>${cell.dataset.r}</b> · Spalte <b>${cell.dataset.c}</b> = ? – welches Ergebnis passt?` : 'Tippe ein leeres Feld an und rechne: Reihe · Spalte';
 }
 function pzBind() {
   const tray = $('#pztray');
@@ -735,6 +758,7 @@ function pzBind() {
     $$('.pz-cell.hover').forEach((c) => c.classList.remove('hover'));
     const t = document.elementFromPoint(e.clientX, e.clientY)?.closest('.pz-cell.empty:not(.filled)');
     t?.classList.add('hover');
+    pzCross(t || game.pz.aim);
   });
   const up = (e) => {
     if (!drag) return;
@@ -743,11 +767,12 @@ function pzBind() {
     d.el.classList.remove('lifted');
     if (d.ghost) {
       d.ghost.remove();
-      const t = document.elementFromPoint(e.clientX, e.clientY)?.closest('.pz-cell.empty');
-      if (t) pzPlace(d.i, t);
+      const t = document.elementFromPoint(e.clientX, e.clientY)?.closest('.pz-cell.empty:not(.filled)');
+      if (t) pzPlace(d.i, t); else pzCross(game.pz.aim);
       return;
     }
-    // nur getippt: auswählen (nochmals tippen = abwählen)
+    // nur getippt: Feld schon gewählt → hineinsetzen; sonst Ergebnis auswählen (nochmals tippen = abwählen)
+    if (game.pz.aim) { pzPlace(d.i, game.pz.aim); return; }
     $$('.pz-tile.sel').forEach((x) => x.classList.remove('sel'));
     $('#pztable').classList.toggle('picking', game.pz.sel !== d.i);
     if (game.pz.sel === d.i) { game.pz.sel = null; return; }
@@ -755,9 +780,10 @@ function pzBind() {
   };
   tray.addEventListener('pointerup', up); tray.addEventListener('pointercancel', up);
   $('#pztable').addEventListener('click', (e) => {
-    const t = e.target.closest('.pz-cell.empty');
-    if (!t || game.pz.sel == null || !runOn()) return;
-    pzPlace(game.pz.sel, t);
+    const t = e.target.closest('.pz-cell.empty:not(.filled)');
+    if (!t || !runOn()) return;
+    if (game.pz.sel != null) { pzPlace(game.pz.sel, t); return; }
+    pzAim(game.pz.aim === t ? null : t);
   });
 }
 function pzPlace(i, cell) {
@@ -766,23 +792,25 @@ function pzPlace(i, cell) {
   const v = pz.tiles[i], want = +cell.dataset.r * +cell.dataset.c;
   const tile = $(`#pztray .pz-tile[data-t="${i}"]`);
   tile?.classList.remove('sel'); pz.sel = null; $('#pztable')?.classList.remove('picking');
+  // Rechnung wie im Training: Spalte · Reihe (3 · 7 gehört zur 7er-Reihe)
+  const task = makeTask(+cell.dataset.c, +cell.dataset.r, 'mul');
   if (v !== want) {
     sfx.bad();
     r.penalty += PZ_PENALTY;
     tile?.classList.remove('nope'); void tile?.offsetWidth; tile?.classList.add('nope');
     cell.classList.remove('miss'); void cell.offsetWidth; cell.classList.add('miss');
     setTimeout(() => cell.classList.remove('miss'), 450);
-    // fürs Gedächtnis: diese Rechnung war gemeint, das Kind hat v hingesetzt
-    try { recordAnswer(makeTask(+cell.dataset.c, +cell.dataset.r, 'mul'), v, 6000); } catch { /* */ }
+    try { recordAnswer(task, v, 6000); } catch { /* */ }
     runWrong();
     return;
   }
   pz.used.add(i);
   sfx.good();
-  try { recordAnswer(makeTask(+cell.dataset.c, +cell.dataset.r, 'mul'), v, 4000); } catch { /* */ }
+  try { recordAnswer(task, v, 4000); } catch { /* */ }
   cell.textContent = v; cell.classList.add('filled');
   tile?.classList.add('placed');
   sparkle(cell, 8);
+  pzAim(null);
   runRight();
 }
 

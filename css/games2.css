@@ -117,6 +117,10 @@
 .pz-cell { display: grid; place-items: center; height: calc(var(--cw) * .86); border-radius: 8px; font: 700 clamp(.66rem, 2.5vw, 1rem) var(--font-display); font-variant-numeric: tabular-nums; }
 .pz-cell.given { background: color-mix(in srgb, var(--sunken) 70%, var(--paper)); color: var(--ink-2); }
 .pz-cell.given.sq { background: color-mix(in srgb, var(--cw) 60%, var(--paper)); }
+.pz-cell.blank { background: color-mix(in srgb, var(--sunken) 45%, var(--paper)); }
+.pz-cell.blank.x-on, .pz-h.x-on { background: color-mix(in srgb, var(--c) 18%, var(--paper)); }
+.pz-table .pz-h.x-on { background: #fde047; color: #713f12; box-shadow: 0 0 0 2px #f59e0b; border-radius: 8px; }
+.pz-cell.empty.aim { border-style: solid; background: var(--cw); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 35%, transparent); animation: none; }
 .pz-cell.empty { border: 2px dashed var(--c); background: var(--paper); cursor: pointer; animation: pz-blink 2.4s ease-in-out infinite; }
 .pz-table.picking .pz-cell.empty:not(.filled) { background: var(--cw); }
 .pz-cell.empty.hover { border-style: solid; background: var(--cw); transform: scale(1.08); }
