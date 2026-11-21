@@ -12,24 +12,48 @@ const TW3 = { FH: 0.95, D: 2.6, FALL: 0.32 };
 const tw3X = (p) => (p - 50) / 10;
 
 function tw3Canvas(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); return c; }
-/** Fassade: Farbe, Simse, zwei Fensterreihen (je nach «lit» mehr oder weniger beleuchtet) */
-function tw3FacadeCanvas(col, lit) {
+/** Fassade in drei Stilen: «classic» (Bogenfenster mit Läden), «glass» (Glasfront), «brick» (Backstein mit Blumenkästen) */
+function tw3FacadeCanvas(col, lit, style = 'classic') {
+  const on = () => Math.random() < [0.15, 0.45, 0.8][lit];
+  const glass = (g, x, y, ww, hh, light) => {
+    if (light) { const wg = g.createLinearGradient(x, y, x, y + hh); wg.addColorStop(0, '#fff7cc'); wg.addColorStop(1, '#fbbf24'); g.fillStyle = wg; }
+    else { const wg = g.createLinearGradient(x, y, x + ww, y + hh); wg.addColorStop(0, '#d6ecff'); wg.addColorStop(0.5, '#6aa3d6'); wg.addColorStop(1, '#2c5a8a'); g.fillStyle = wg; }
+    g.fillRect(x, y, ww, hh);
+    g.fillStyle = 'rgba(255,255,255,.38)'; g.beginPath(); g.moveTo(x + 4, y + hh - 4); g.lineTo(x + ww * 0.42, y + 3); g.lineTo(x + ww * 0.58, y + 3); g.lineTo(x + ww * 0.2, y + hh - 4); g.fill();
+  };
   return tw3Canvas(256, 128, (g, w, h) => {
+    if (style === 'glass') {
+      g.fillStyle = '#1e293b'; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 6; i++) for (let row = 0; row < 2; row++) glass(g, 4 + i * 42, 10 + row * 56, 38, 50, on());
+      g.fillStyle = col; g.fillRect(0, 0, w, 8); g.fillRect(0, h - 8, w, 8);
+      g.fillStyle = 'rgba(255,255,255,.18)'; for (let i = 0; i <= 6; i++) g.fillRect(2 + i * 42, 0, 3, h);
+      return;
+    }
     g.fillStyle = col; g.fillRect(0, 0, w, h);
-    const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,.14)'); gr.addColorStop(1, 'rgba(0,0,0,.18)');
+    if (style === 'brick') {
+      for (let y = 0; y < h; y += 10) for (let x = (y / 10) % 2 ? -12 : 0; x < w; x += 24) { g.fillStyle = `rgba(0,0,0,${0.06 + Math.random() * 0.08})`; g.fillRect(x + 1, y + 1, 22, 8); }
+    }
+    const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,.16)'); gr.addColorStop(1, 'rgba(0,0,0,.2)');
     g.fillStyle = gr; g.fillRect(0, 0, w, h);
-    g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(0, 0, w, 7); g.fillRect(0, h - 10, w, 10);
-    g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(0, 7, w, 3);
-    for (let row = 0; row < 2; row++) for (let i = 0; i < 4; i++) {
-      const x = 14 + i * 60, y = 22 + row * 50, ww = 40, hh = 34;
-      g.fillStyle = 'rgba(0,0,0,.3)'; g.fillRect(x - 3, y - 3, ww + 6, hh + 6);
-      const on = Math.random() < [0.15, 0.45, 0.8][lit];
-      if (on) { const wg = g.createLinearGradient(x, y, x, y + hh); wg.addColorStop(0, '#fff7cc'); wg.addColorStop(1, '#fbbf24'); g.fillStyle = wg; }
-      else { const wg = g.createLinearGradient(x, y, x + ww, y + hh); wg.addColorStop(0, '#bfe3ff'); wg.addColorStop(0.55, '#5f95c4'); wg.addColorStop(1, '#2f5f8f'); g.fillStyle = wg; }
-      g.fillRect(x, y, ww, hh);
-      g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.moveTo(x + 4, y + hh - 4); g.lineTo(x + 16, y + 4); g.lineTo(x + 22, y + 4); g.lineTo(x + 10, y + hh - 4); g.fill();
-      g.fillStyle = 'rgba(40,40,40,.55)'; g.fillRect(x + ww / 2 - 1, y, 2, hh); g.fillRect(x, y + hh / 2 - 1, ww, 2);
-      g.fillStyle = 'rgba(255,255,255,.4)'; g.fillRect(x - 4, y + hh + 3, ww + 8, 3);
+    g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0, h - 9, w, 9);
+    for (let i = 0; i < 3; i++) {
+      const x = 22 + i * 80, y = 20, ww = 52, hh = 70;
+      if (style === 'classic') {
+        // Läden, Bogenfenster mit weissem Rahmen
+        g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(x - 16, y + 6, 12, hh - 6); g.fillRect(x + ww + 4, y + 6, 12, hh - 6);
+        g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(x - 4, y + hh + 4); g.lineTo(x - 4, y + 22); g.arc(x + ww / 2, y + 22, ww / 2 + 4, Math.PI, 0); g.lineTo(x + ww + 4, y + hh + 4); g.fill();
+        g.save(); g.beginPath(); g.moveTo(x, y + hh); g.lineTo(x, y + 22); g.arc(x + ww / 2, y + 22, ww / 2, Math.PI, 0); g.lineTo(x + ww, y + hh); g.closePath(); g.clip();
+        glass(g, x, y - 6, ww, hh + 6, on()); g.restore();
+        g.fillStyle = '#ffffff'; g.fillRect(x + ww / 2 - 2, y + 4, 4, hh - 4); g.fillRect(x, y + 40, ww, 4);
+        g.fillStyle = '#f8fafc'; g.fillRect(x - 8, y + hh + 2, ww + 16, 6);
+      } else {
+        g.fillStyle = '#f1f5f9'; g.fillRect(x - 5, y - 5, ww + 10, hh + 10);
+        glass(g, x, y, ww, hh, on());
+        g.fillStyle = '#f1f5f9'; g.fillRect(x + ww / 2 - 2, y, 4, hh); g.fillRect(x, y + hh / 2 - 2, ww, 4);
+        // Blumenkasten
+        g.fillStyle = '#7c4a1e'; g.fillRect(x - 6, y + hh + 4, ww + 12, 10);
+        for (let k = 0; k < 7; k++) { g.fillStyle = ['#ef4444', '#f472b6', '#facc15', '#22c55e'][k % 4]; g.beginPath(); g.arc(x - 2 + k * 9.5, y + hh + 3, 4.5, 0, 7); g.fill(); }
+      }
     }
   });
 }
@@ -144,18 +168,22 @@ async function startTower3D() {
   /* ---------- Stockwerke ---------- */
   const COLORS = ['#e76f51', '#e9c46a', '#2a9d8f', '#8ab17d', '#f4a261', '#6d8db8', '#b56576', '#d4a373', '#5fa8d3', '#c9ada7'];
   const facadeCache = new Map();
-  const facade = (c, lit) => { const k = `${c}|${lit}`; if (!facadeCache.has(k)) facadeCache.set(k, tw3FacadeCanvas(c, lit)); return facadeCache.get(k); };
+  const facade = (c, lit, st) => { const k = `${c}|${lit}|${st}`; if (!facadeCache.has(k)) facadeCache.set(k, tw3FacadeCanvas(c, lit, st)); return facadeCache.get(k); };
+  const STYLES = ['classic', 'classic', 'brick', 'glass'];
+  const corniceMat = keep(new T.MeshStandardMaterial({ color: 0xf5efe0, roughness: 0.8 }));
   const topMat = keep(new T.MeshStandardMaterial({ color: 0x9aa3ad, roughness: 0.9 }));
   /** Ein Stockwerk als Mesh (Breite in Prozent) */
   function floorMesh(f, wPct, base = false) {
     const W = wPct / 10, D = TW3.D;
-    const cv = base ? baseCanvas : facade(f.c, f.lit);
+    const cv = base ? baseCanvas : facade(f.c, f.lit, f.st);
     const front = keep(new T.CanvasTexture(cv)); front.colorSpace = T.SRGBColorSpace; front.wrapS = T.RepeatWrapping; front.repeat.set(base ? 1 : W / 2, 1);
     const side = keep(new T.CanvasTexture(cv)); side.colorSpace = T.SRGBColorSpace; side.wrapS = T.RepeatWrapping; side.repeat.set(base ? 0.6 : D / 2, 1);
     const fm = keep(new T.MeshStandardMaterial({ map: front, roughness: 0.75 })), sm = keep(new T.MeshStandardMaterial({ map: side, roughness: 0.75 }));
     const m = new T.Mesh(box, [sm, sm, topMat, topMat, fm, fm]);
     m.scale.set(W, TW3.FH, D); m.castShadow = true; m.receiveShadow = true;
     m.userData = { front, side };
+    // Gesims oben (etwas breiter, hell)
+    const cor = new T.Mesh(box, corniceMat); cor.scale.set(1 + 0.16 / W, 0.1 / TW3.FH, 1 + 0.16 / D); cor.position.y = 0.5 - 0.05 / TW3.FH; cor.castShadow = true; m.add(cor);
     if (f.label && !base) {
       const st = keep(new T.CanvasTexture(tw3SignCanvas(f.label))); st.colorSpace = T.SRGBColorSpace;
       const sw = Math.min(W * 0.82, 2.2), sign = new T.Mesh(keep(new T.PlaneGeometry(1, 1)), keep(new T.MeshBasicMaterial({ map: st, transparent: true })));
@@ -203,32 +231,38 @@ async function startTower3D() {
     hut.position.x = Math.min(0.3, top.w / 40);
   }
 
-  /* ---------- Kletterkran ---------- */
-  const yellow = keep(new T.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.6, metalness: 0.2 })), dark = keep(new T.MeshStandardMaterial({ color: 0x374151, roughness: 0.7 }));
-  const latticeTex = keep(new T.CanvasTexture(tw3Canvas(64, 128, (g, w, h) => { g.fillStyle = '#facc15'; g.fillRect(0, 0, w, h); g.strokeStyle = '#a16207'; g.lineWidth = 5; g.strokeRect(2, 2, w - 4, h - 4); g.beginPath(); g.moveTo(0, 0); g.lineTo(w, h / 2); g.lineTo(0, h); g.moveTo(w, 0); g.lineTo(0, h / 2); g.lineTo(w, h); g.stroke(); })));
-  latticeTex.colorSpace = T.SRGBColorSpace; latticeTex.wrapT = T.RepeatWrapping;
-  const latMat = keep(new T.MeshStandardMaterial({ map: latticeTex, roughness: 0.6, transparent: true, alphaTest: 0.1 }));
-  const craneMast = new T.Mesh(box, latMat); craneMast.castShadow = true; scene.add(craneMast);
-  const jib = new T.Mesh(box, yellow); jib.castShadow = true; scene.add(jib);
-  const counter = new T.Mesh(box, dark); counter.castShadow = true; scene.add(counter);
-  const cab = new T.Mesh(box, keep(new T.MeshStandardMaterial({ color: 0xf97316 }))); cab.castShadow = true; scene.add(cab);
-  const trolley = new T.Mesh(box, dark); trolley.scale.set(0.5, 0.22, 0.5); scene.add(trolley);
-  const cable = new T.Mesh(keep(new T.CylinderGeometry(0.025, 0.025, 1, 6)), dark); scene.add(cable);
-  const hook = new T.Mesh(box, dark); hook.scale.set(0.5, 0.12, 0.12); scene.add(hook);
-  const MAST_X = -7.2, MAST_Z = -1.4;
-  function placeCrane(jibY) {
-    craneMast.scale.set(0.55, jibY, 0.55); craneMast.position.set(MAST_X, jibY / 2, MAST_Z);
-    latticeTex.repeat.set(1, jibY / 1.1);
-    jib.scale.set(14.5, 0.32, 0.4); jib.position.set(MAST_X + 6.9, jibY + 0.16, MAST_Z);
-    counter.scale.set(1.4, 0.7, 0.7); counter.position.set(MAST_X - 1.6, jibY, MAST_Z);
-    cab.scale.set(0.7, 0.6, 0.7); cab.position.set(MAST_X + 0.6, jibY - 0.35, MAST_Z + 0.2);
-  }
+  /* ---------- Pendel: das Stockwerk hängt an einem Seil (Aufhängung oben ausserhalb des Bildes) ---------- */
+  const ropeMat = keep(new T.MeshStandardMaterial({ color: 0x3f3f46, roughness: 0.55, metalness: 0.3 }));
+  const rope = new T.Mesh(keep(new T.CylinderGeometry(0.035, 0.035, 1, 8)), ropeMat); rope.castShadow = true; scene.add(rope);
+  const clamp = new T.Group();
+  const clampBar = new T.Mesh(box, keep(new T.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.5, metalness: 0.4 }))); clampBar.scale.set(1.2, 0.12, 0.3); clamp.add(clampBar);
+  const ring = new T.Mesh(keep(new T.TorusGeometry(0.13, 0.04, 8, 16)), ropeMat); ring.position.y = 0.16; clamp.add(ring);
+  for (const sx of [-0.55, 0.55]) { const l = new T.Mesh(box, ropeMat); l.scale.set(0.05, 0.35, 0.05); l.position.set(sx, -0.12, 0); l.rotation.z = sx > 0 ? -0.25 : 0.25; clamp.add(l); }
+  scene.add(clamp);
+  const yUp = new T.Vector3(0, 1, 0), vDir = new T.Vector3();
+  function placeRope(ax, ay, bx, by) { vDir.set(bx - ax, by - ay, 0); const len = vDir.length(); rope.position.set((ax + bx) / 2, (ay + by) / 2, 0); rope.scale.set(1, len, 1); rope.quaternion.setFromUnitVectors(yUp, vDir.normalize()); }
+  // Skyline weit hinten (wandert mit der Höhe langsamer mit)
+  const skyline = tw3Canvas(1024, 256, (g, w, h) => {
+    let x = 0;
+    while (x < w) { const bw = 30 + Math.random() * 60, bh = 60 + Math.random() * 170; g.fillStyle = `rgba(${90 + Math.random() * 30},${120 + Math.random() * 30},${175 + Math.random() * 30},.9)`; g.fillRect(x, h - bh, bw, bh);
+      g.fillStyle = 'rgba(255,240,190,.5)'; for (let yy = h - bh + 8; yy < h - 6; yy += 14) for (let xx = x + 5; xx < x + bw - 6; xx += 10) if (Math.random() < 0.3) g.fillRect(xx, yy, 4, 6);
+      x += bw + 2; }
+  });
+  const skyT = keep(new T.CanvasTexture(skyline)); skyT.colorSpace = T.SRGBColorSpace;
+  const skyMesh = new T.Mesh(keep(new T.PlaneGeometry(150, 37)), keep(new T.MeshBasicMaterial({ map: skyT, transparent: true, fog: false })));
+  skyMesh.position.set(0, 15, -70); scene.add(skyMesh);
+  // Glitzer bei «Perfekt!»
+  const starT = keep(new T.CanvasTexture(tw3Canvas(64, 64, (g) => { g.fillStyle = '#fde047'; g.beginPath(); for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2 - Math.PI / 2, r = i % 2 ? 12 : 30; g.lineTo(32 + Math.cos(a) * r, 32 + Math.sin(a) * r); } g.fill(); })));
+  starT.colorSpace = T.SRGBColorSpace;
+  const starMat = keep(new T.SpriteMaterial({ map: starT, transparent: true, depthWrite: false }));
+  const stars = [];
+  function starBurst(x, y) { for (let i = 0; i < 16; i++) { const sp = new T.Sprite(starMat.clone()); own.push(sp.material); sp.position.set(x, y, TW3.D / 2 + 0.3); sp.scale.setScalar(0.35); const a = (i / 16) * Math.PI * 2; stars.push({ sp, vx: Math.cos(a) * 3, vy: Math.sin(a) * 3, t: 0 }); scene.add(sp); } }
 
   /* ---------- Spiel-Zustand der Szene ---------- */
-  const S = { camY: 2.2, jibY: 4.5, t: 0, last: performance.now(), hang: null, falls: [], landT: 0 };
+  const S = { camY: 2.2, pivY: 6, t: 0, last: performance.now(), hang: null, falls: [], landT: 0 };
   game.tw.blocks.forEach((b, i) => addFloor(b, i));
   placeRoof();
-  const hangY = () => TW3.FH * (game.tw.blocks.length + 0.5) + 1.7;
+  const ROPE = 3.6, AMP = 0.92;
   function setHeight() { const el = $('#twheight b'); if (el) el.textContent = game.tw.blocks.length - 1; }
 
   const tw = game.tw;
@@ -236,7 +270,7 @@ async function startTower3D() {
     /** richtige Antwort: neues Stockwerk hängt am Kran */
     hang(label) {
       const top = tw.blocks[tw.blocks.length - 1];
-      const f = { w: top.w, label, c: COLORS[Math.floor(Math.random() * COLORS.length)], lit: Math.floor(Math.random() * 3) };
+      const f = { w: top.w, label, c: COLORS[Math.floor(Math.random() * COLORS.length)], lit: Math.floor(Math.random() * 3), st: g2Pick(STYLES) };
       f.mesh = floorMesh(f, f.w);
       scene.add(f.mesh);
       tw.hang = f;
@@ -249,20 +283,20 @@ async function startTower3D() {
       $('#twtip').hidden = true;
       const x = tw.hx - h.w / 2, level = tw.blocks.length;
       const ov = Math.min(x + h.w, top.x + top.w) - Math.max(x, top.x);
-      const y0 = h.mesh.position.y, yLand = TW3.FH * (level + 0.5);
+      const yLand = TW3.FH * (level + 0.5);
       tw.hang = null;
       if (ov <= 0.5) { // daneben: fällt am Turm vorbei
-        S.falls.push({ m: h.mesh, vy: 0, vx: (x < top.x ? -1 : 1) * 1.2, spin: (x < top.x ? 1 : -1) * 2.2, t: 0, life: 1.6 });
+        S.falls.push({ m: h.mesh, vy: 0, vx: (x < top.x ? -1 : 1) * 1.2, spin: (x < top.x ? 1 : -1) * 2.2, t: 0, life: 1.8 });
         gLater(() => { sfx.bad(); tone([300, 200], 0.12, 'sawtooth', 0.04); if (runWrong()) return; twAsk(); }, 450);
         return;
       }
-      S.drop = { m: h.mesh, y0, y1: yLand, t: 0, done: () => {
+      S.drop = { m: h.mesh, vy: 0, y1: yLand, done: () => {
         const perfect = Math.abs(x - top.x) < 1.3;
-        const nb = perfect ? { x: top.x, w: Math.min(46, top.w + 2.5), label: h.label, c: h.c, lit: h.lit } : { x: Math.max(x, top.x), w: ov, label: h.label, c: h.c, lit: h.lit };
+        const nb = perfect ? { x: top.x, w: Math.min(46, top.w + 2.5), label: h.label, c: h.c, lit: h.lit, st: h.st } : { x: Math.max(x, top.x), w: ov, label: h.label, c: h.c, lit: h.lit, st: h.st };
         // überstehendes Stück bricht ab und fällt
         if (!perfect) {
           const cutL = x < top.x, cw = h.w - ov;
-          const piece = floorMesh({ c: h.c, lit: h.lit }, cw);
+          const piece = floorMesh({ c: h.c, lit: h.lit, st: h.st }, cw);
           piece.position.set(tw3X((cutL ? x : top.x + top.w) + cw / 2), yLand, 0);
           scene.add(piece);
           S.falls.push({ m: piece, vy: 0.5, vx: (cutL ? -1 : 1) * 1.6, spin: (cutL ? 1 : -1) * 3, t: 0, life: 1.4 });
@@ -274,6 +308,7 @@ async function startTower3D() {
         placeRoof(); setHeight();
         if (perfect) {
           tone([880, 1320], 0.08, 'triangle', 0.06);
+          starBurst(m.position.x, m.position.y);
           const p = $('#twpop'); if (p) { p.textContent = 'Perfekt!'; p.classList.remove('on'); void p.offsetWidth; p.classList.add('on'); }
           S.glow = { m, t: 0 };
         } else tone([392], 0.06, 'square', 0.04);
@@ -292,29 +327,22 @@ async function startTower3D() {
     game.raf = raf;
     const dt = Math.max(0, Math.min(0.05, (now - S.last) / 1000)); S.last = now; S.t += dt;
     const n = tw.blocks.length;
-    // Schwingen (wie in 2D)
-    tw.swingT += dt * Math.min(3.3, 1.5 + (n - 1) * 0.11);
-    const w = tw.hang ? tw.hang.w : 30;
-    tw.hx = 50 + Math.sin(tw.swingT) * (50 - w / 2 - 1);
-    // Kran klettert mit, Kamera folgt der Turmspitze
+    // Pendel: je höher der Turm, desto schneller
+    tw.swingT += dt * Math.min(3.1, 1.6 + (n - 1) * 0.1);
+    const th = Math.sin(tw.swingT) * AMP;
     const topY = TW3.FH * n;
-    S.jibY += (topY + 3.6 - S.jibY) * Math.min(1, dt * 2.5);
-    S.camY += (topY + 0.6 - S.camY) * Math.min(1, dt * 2.2);
-    placeCrane(S.jibY);
-    const hx = tw3X(tw.hx), hy = Math.min(hangY(), S.jibY - 1.1);
-    trolley.position.set(hx, S.jibY - 0.08, MAST_Z);
-    if (tw.hang) tw.hang.mesh.position.set(hx, hy + Math.sin(S.t * 3) * 0.04, 0);
-    const cableTop = S.jibY - 0.15, cableBot = tw.hang ? hy + TW3.FH / 2 + 0.06 : S.jibY - 1.0;
-    cable.scale.y = Math.max(0.1, cableTop - cableBot); cable.position.set(hx, (cableTop + cableBot) / 2, tw.hang ? 0 : MAST_Z);
-    cable.rotation.x = tw.hang ? Math.atan2(MAST_Z, cableTop - cableBot) * 0 : 0;
-    hook.position.set(hx, cableBot, tw.hang ? 0 : MAST_Z);
-    if (tw.hang) { cable.position.z = 0; hook.position.z = 0; trolley.position.z = 0; jib.position.z = 0; jib.scale.z = 0.4; }
-    // fallen lassen
+    S.pivY += (topY + 0.7 + TW3.FH + 0.25 + ROPE - S.pivY) * Math.min(1, dt * 2.5);
+    S.camY += (topY + 0.9 - S.camY) * Math.min(1, dt * 2.2);
+    const bx = Math.sin(th) * ROPE, by = S.pivY - Math.cos(th) * ROPE;
+    tw.hx = 50 + bx * 10; // Mitte in Prozent (für die Regeln wie in 2D)
+    clamp.position.set(bx, by, 0); clamp.rotation.z = th * 0.55;
+    placeRope(0, S.pivY + 6, bx, by + 0.22);
+    if (tw.hang) { const tl = th * 0.55; tw.hang.mesh.position.set(bx - Math.sin(tl) * (TW3.FH / 2 + 0.12), by - Math.cos(tl) * (TW3.FH / 2 + 0.12), 0); tw.hang.mesh.rotation.z = tl; }
+    // fallen lassen (mit Schwerkraft; die Drehung richtet sich auf)
     if (S.drop) {
-      const d = S.drop; d.t += dt / TW3.FALL;
-      const k = Math.min(1, d.t);
-      d.m.position.y = d.y0 + (d.y1 - d.y0) * k * k;
-      if (k >= 1) { const cb = d.done; S.drop = null; cb(); }
+      const d = S.drop; d.vy -= 22 * dt;
+      d.m.position.y += d.vy * dt; d.m.rotation.z *= Math.max(0, 1 - dt * 14);
+      if (d.m.position.y <= d.y1) { d.m.position.y = d.y1; d.m.rotation.z = 0; const cb = d.done; S.drop = null; cb(); }
     }
     // abgebrochene / danebengefallene Stücke
     for (let i = S.falls.length - 1; i >= 0; i--) {
@@ -327,15 +355,17 @@ async function startTower3D() {
     if (S.land) { S.land.t += dt * 6; const k = Math.min(1, S.land.t); S.land.m.scale.y = TW3.FH * (1 - Math.sin(k * Math.PI) * 0.12); if (k >= 1) { S.land.m.scale.y = TW3.FH; S.land = null; } }
     if (S.glow) { S.glow.t += dt; const e = Math.max(0, 1 - S.glow.t / 0.8); S.glow.m.material.forEach((mm) => { if (mm.emissive) { mm.emissive.setRGB(1, 0.85, 0.3); mm.emissiveIntensity = e * 0.7; } }); if (e <= 0) S.glow = null; }
     blink.visible = Math.sin(S.t * 5) > 0;
+    for (let i = stars.length - 1; i >= 0; i--) { const st = stars[i]; st.t += dt; st.sp.position.x += st.vx * dt; st.sp.position.y += st.vy * dt; st.sp.material.opacity = Math.max(0, 1 - st.t / 0.8); st.sp.material.rotation += dt * 4; if (st.t > 0.8) { scene.remove(st.sp); stars.splice(i, 1); } }
     // Wolken ziehen, Himmel wird mit der Höhe dunkler
     for (const c of clouds) { c.position.x += c.userData.v * dt; if (c.position.x > 30) c.position.x = -30; }
     sky.copy(skyLow).lerp(skyHigh, Math.min(1, topY / 45)); scene.fog.color.copy(sky);
-    // Kamera
-    const back = portrait ? 15.5 : 12.5;
-    camera.position.set(portrait ? 3.2 : 5.5, S.camY + 2.6, back);
-    look.set(0, S.camY - 0.6, 0);
+    // Kamera: frontal, leicht von oben
+    const back = portrait ? 16 : 12.5;
+    camera.position.set(0, S.camY + 1.6, back);
+    look.set(0, S.camY - 0.2, 0);
     camera.lookAt(look);
-    sun.position.set(6, S.camY + 12, 8); sun.target.position.set(0, S.camY - 2, 0);
+    skyMesh.position.y = 15 + S.camY * 0.55;
+    sun.position.set(5, S.camY + 9, 12); sun.target.position.set(0, S.camY - 2, 0);
     renderer.render(scene, camera);
   }
   raf = requestAnimationFrame(frame);
