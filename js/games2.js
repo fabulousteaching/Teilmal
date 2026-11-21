@@ -1416,6 +1416,7 @@ function csRemove(m) { const c = game.cs; c.mons = c.mons.filter((x) => x !== m)
 function csKey(k) {
   const c = game.cs;
   if (!c || !runOn()) return;
+  c.r3?.key();
   if (k === 'back') c.typed = c.typed.slice(0, -1);
   else if (k === 'ok') { if (c.typed) csTry(true); return; }
   else if (c.typed.length < 3) c.typed += k;
@@ -1426,19 +1427,19 @@ function csKey(k) {
 function csTry(force) {
   const c = game.cs, v = Number(c.typed);
   if (!c.typed) return;
-  const hit = c.mons.filter((m) => m.t.answer === v).sort((a, b) => a.x - b.x)[0];
+  const hit = c.mons.filter((m) => !m.targeted && !m.dying && m.out !== false && m.t.answer === v).sort((a, b) => a.x - b.x)[0];
   if (hit) {
     recordAnswer(hit.t, v, performance.now() - hit.t.shownAt);
     if (c.r3) c.r3.shoot(hit); else csShoot(hit); // 3D-Version: js/castle3d.js
     c.typed = ''; $('#cstyped').innerHTML = CS_EMPTY;
-    sfx.good();
+    if (!c.r3) sfx.good();
     runRight();
     return;
   }
   // passt zu keinem Monster (mehr)? Dann ist die Eingabe falsch – sie wird gelöscht (kostet nichts)
-  if (force || !c.mons.some((m) => String(m.t.answer).startsWith(c.typed))) {
+  if (force || !c.mons.some((m) => !m.targeted && m.out !== false && String(m.t.answer).startsWith(c.typed))) {
     const el = $('#cstyped'); el.classList.remove('bad'); void el.offsetWidth; el.classList.add('bad');
-    tone([200], 0.08, 'square', 0.04);
+    if (c.r3) c.r3.nope(); else tone([200], 0.08, 'square', 0.04);
     c.typed = ''; c.miss = (c.miss || 0) + 1;
     gLater(() => { if ($('#cstyped') && !game.cs.typed) $('#cstyped').innerHTML = CS_EMPTY; }, 350);
   }
