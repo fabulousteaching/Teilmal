@@ -230,7 +230,7 @@ function twCity() {
   return `<svg class="tw-city" viewBox="0 0 600 200" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" fill="rgba(30, 64, 120, .22)"/><path d="${w}" fill="rgba(255, 240, 180, .35)"/></svg>`;
 }
 function startTower() {
-  Object.assign(game, { picker: gamePicker(), tw: { blocks: [{ x: 30, w: 40, label: '🏪 Erdgeschoss' }], phase: 'ask', hang: null, t: null, swingT: 0, shift: 0 }, over: false });
+  Object.assign(game, { picker: gamePicker(), tw: { blocks: [{ x: 30, w: 40, label: '' }], phase: 'ask', hang: null, t: null, swingT: 0, shift: 0 }, over: false });
   const r = runStart('tower');
   $('#view').innerHTML = gameShell('tower', `
     ${runHudHTML('bar-hud')}
@@ -260,7 +260,7 @@ function twBlockEl(b, level) {
   el.className = `tw-block house${level === 0 ? ' base' : ''}`;
   el.style.cssText = `left:${b.x}%;width:${b.w}%;bottom:${TW.GROUND + level * TW.BH}px;--bc:${level === 0 ? '#94a3b8' : b.c || TW.COLORS[level % TW.COLORS.length]}`;
   el.dataset.lit = b.lit ?? Math.floor(Math.random() * 3);
-  el.innerHTML = `<span>${esc(b.label)}</span>`;
+  el.innerHTML = b.label ? `<span>${esc(b.label)}</span>` : '';
   w.insertBefore(el, $('#twroof'));
   twFit(el, b.w);
   b.el = el;
@@ -369,7 +369,7 @@ function twDrop() {
   h.el.style.top = `${landTop}px`;
   gLater(() => {
     const perfect = Math.abs(x - top.x) < 1.3;
-    const nb = perfect ? { x: top.x, w: Math.min(46, top.w + 2.5), label: h.label, c: h.c, lit: h.lit } : { x: Math.max(x, top.x), w: ov, label: h.label, c: h.c, lit: h.lit };
+    const nb = perfect ? { x: top.x, w: Math.min(46, top.w + 2.5), label: '', c: h.c, lit: h.lit } : { x: Math.max(x, top.x), w: ov, label: '', c: h.c, lit: h.lit };
     // überstehendes Stück fällt ab
     if (!perfect) {
       const cutL = x < top.x, cw = h.w - ov;

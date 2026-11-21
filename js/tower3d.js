@@ -86,7 +86,7 @@ function tw3SignCanvas(text) {
 
 async function startTower3D() {
   const T = await w3Three();
-  Object.assign(game, { picker: gamePicker(), tw: { blocks: [{ x: 30, w: 40, label: 'Erdgeschoss' }], phase: 'ask', hang: null, t: null, swingT: 0 }, over: false });
+  Object.assign(game, { picker: gamePicker(), tw: { blocks: [{ x: 30, w: 40, label: '' }], phase: 'ask', hang: null, t: null, swingT: 0 }, over: false });
   const r = runStart('tower');
   $('#view').innerHTML = gameShell('tower', `
     ${runHudHTML('bar-hud')}
@@ -307,7 +307,8 @@ async function startTower3D() {
       }
       S.drop = { m: h.mesh, vy: 0, y1: yLand, done: () => {
         const perfect = Math.abs(x - top.x) < 1.3;
-        const nb = perfect ? { x: top.x, w: Math.min(46, top.w + 2.5), label: h.label, c: h.c, lit: h.lit, st: h.st, deco: h.deco } : { x: Math.max(x, top.x), w: ov, label: h.label, c: h.c, lit: h.lit, st: h.st, deco: h.deco };
+        // im Turm ohne Rechnung – es ist einfach ein Stockwerk
+        const nb = perfect ? { x: top.x, w: Math.min(46, top.w + 2.5), label: '', c: h.c, lit: h.lit, st: h.st, deco: h.deco } : { x: Math.max(x, top.x), w: ov, label: '', c: h.c, lit: h.lit, st: h.st, deco: h.deco };
         // überstehendes Stück bricht ab und fällt
         if (!perfect) {
           const cutL = x < top.x, cw = h.w - ov;
