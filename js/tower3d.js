@@ -8,7 +8,7 @@
  */
 'use strict';
 
-const TW3 = { FH: 0.95, D: 2.6, FALL: 0.32 };
+const TW3 = { FH: 1.2, D: 2.6, FALL: 0.32 };
 const tw3X = (p) => (p - 50) / 10;
 
 function tw3Canvas(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); return c; }
@@ -22,6 +22,19 @@ function tw3FacadeCanvas(col, lit, style = 'classic') {
     g.fillStyle = 'rgba(255,255,255,.38)'; g.beginPath(); g.moveTo(x + 4, y + hh - 4); g.lineTo(x + ww * 0.42, y + 3); g.lineTo(x + ww * 0.58, y + 3); g.lineTo(x + ww * 0.2, y + hh - 4); g.fill();
   };
   return tw3Canvas(256, 128, (g, w, h) => {
+    if (style === 'cottage') {
+      g.fillStyle = col; g.fillRect(0, 0, w, h);
+      for (let x = 0; x < w; x += 16) { g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(x, 0, 2, h); g.fillStyle = 'rgba(0,0,0,.06)'; g.fillRect(x + 8, 0, 1, h); }
+      for (let i = 0; i < 3; i++) {
+        const x = 43 + i * 85, y = 52, r = 26;
+        g.fillStyle = '#ffffff'; g.beginPath(); g.arc(x, y, r + 6, 0, 7); g.fill();
+        g.save(); g.beginPath(); g.arc(x, y, r, 0, 7); g.clip(); glass(g, x - r, y - r, r * 2, r * 2, on()); g.restore();
+        g.fillStyle = '#ffffff'; g.fillRect(x - 2, y - r, 4, r * 2); g.fillRect(x - r, y - 2, r * 2, 4);
+        // kleines Herz über dem Fenster
+        g.fillStyle = 'rgba(255,255,255,.75)'; g.beginPath(); g.moveTo(x, y - r - 8); g.bezierCurveTo(x - 8, y - r - 16, x - 12, y - r - 4, x, y - r + 1); g.bezierCurveTo(x + 12, y - r - 4, x + 8, y - r - 16, x, y - r - 8); g.fill();
+      }
+      return;
+    }
     if (style === 'glass') {
       g.fillStyle = '#1e293b'; g.fillRect(0, 0, w, h);
       for (let i = 0; i < 6; i++) for (let row = 0; row < 2; row++) glass(g, 4 + i * 42, 10 + row * 56, 38, 50, on());
@@ -165,71 +178,73 @@ async function startTower3D() {
     scene.add(c); clouds.push(c);
   }
 
-  /* ---------- Stockwerke ---------- */
-  const COLORS = ['#e76f51', '#e9c46a', '#2a9d8f', '#8ab17d', '#f4a261', '#6d8db8', '#b56576', '#d4a373', '#5fa8d3', '#c9ada7'];
+  /* ---------- Stockwerke (Gruppen in Welt-Einheiten; kein Dach – es wird ja immer weitergebaut) ---------- */
+  const COLORS = ['#f9a8d4', '#fcd34d', '#86efac', '#93c5fd', '#c4b5fd', '#fdba74', '#5eead4', '#fda4af', '#a5b4fc'];
   const facadeCache = new Map();
   const facade = (c, lit, st) => { const k = `${c}|${lit}|${st}`; if (!facadeCache.has(k)) facadeCache.set(k, tw3FacadeCanvas(c, lit, st)); return facadeCache.get(k); };
-  const STYLES = ['classic', 'classic', 'brick', 'glass'];
-  const corniceMat = keep(new T.MeshStandardMaterial({ color: 0xf5efe0, roughness: 0.8 }));
-  const topMat = keep(new T.MeshStandardMaterial({ color: 0x9aa3ad, roughness: 0.9 }));
-  /** Ein Stockwerk als Mesh (Breite in Prozent) */
+  const STYLES = ['classic', 'cottage', 'cottage', 'brick'];
+  const DECOS = ['planter', 'awning', 'planter', 'none'];
+  const trimMat = keep(new T.MeshStandardMaterial({ color: 0xfffbf2, roughness: 0.7 }));
+  const topMat = keep(new T.MeshStandardMaterial({ color: 0xe7dcc8, roughness: 0.9 }));
+  const potMat = keep(new T.MeshStandardMaterial({ color: 0x9a5b2e, roughness: 0.8 }));
+  const leafMat = keep(new T.MeshStandardMaterial({ color: 0x4caf50, roughness: 0.8, flatShading: true }));
+  const flowerMats = ['#ef4444', '#f472b6', '#facc15', '#ffffff', '#a78bfa'].map((c) => keep(new T.MeshStandardMaterial({ color: c, roughness: 0.6 })));
+  const flowerG = keep(new T.IcosahedronGeometry(0.07, 0)), leafG = keep(new T.IcosahedronGeometry(0.1, 0));
+  const awnCache = new Map();
+  const awnTex = (c) => { if (!awnCache.has(c)) { const t = keep(new T.CanvasTexture(tw3Canvas(256, 32, (g, w, h) => { for (let i = 0; i < 16; i++) { g.fillStyle = i % 2 ? '#ffffff' : c; g.fillRect(i * 16, 0, 16, h); } g.fillStyle = 'rgba(0,0,0,.15)'; g.fillRect(0, h - 4, w, 4); }))); t.colorSpace = T.SRGBColorSpace; awnCache.set(c, t); } return awnCache.get(c); };
+  /** Ein Stockwerk (Breite in Prozent) als Gruppe; userData.body = Grundkörper */
   function floorMesh(f, wPct, base = false) {
-    const W = wPct / 10, D = TW3.D;
+    const W = wPct / 10, D = TW3.D, FH = TW3.FH, g = new T.Group();
     const cv = base ? baseCanvas : facade(f.c, f.lit, f.st);
-    const front = keep(new T.CanvasTexture(cv)); front.colorSpace = T.SRGBColorSpace; front.wrapS = T.RepeatWrapping; front.repeat.set(base ? 1 : W / 2, 1);
-    const side = keep(new T.CanvasTexture(cv)); side.colorSpace = T.SRGBColorSpace; side.wrapS = T.RepeatWrapping; side.repeat.set(base ? 0.6 : D / 2, 1);
+    const front = keep(new T.CanvasTexture(cv)); front.colorSpace = T.SRGBColorSpace; front.wrapS = T.RepeatWrapping; front.repeat.set(base ? 1 : Math.max(1, W / 2.2), 1); front.anisotropy = 8;
+    const side = keep(new T.CanvasTexture(cv)); side.colorSpace = T.SRGBColorSpace; side.wrapS = T.RepeatWrapping; side.repeat.set(base ? 0.6 : D / 2.2, 1);
     const fm = keep(new T.MeshStandardMaterial({ map: front, roughness: 0.75 })), sm = keep(new T.MeshStandardMaterial({ map: side, roughness: 0.75 }));
-    const m = new T.Mesh(box, [sm, sm, topMat, topMat, fm, fm]);
-    m.scale.set(W, TW3.FH, D); m.castShadow = true; m.receiveShadow = true;
-    m.userData = { front, side };
-    // Gesims oben (etwas breiter, hell)
-    const cor = new T.Mesh(box, corniceMat); cor.scale.set(1 + 0.16 / W, 0.1 / TW3.FH, 1 + 0.16 / D); cor.position.y = 0.5 - 0.05 / TW3.FH; cor.castShadow = true; m.add(cor);
-    if (f.label && !base) {
-      const st = keep(new T.CanvasTexture(tw3SignCanvas(f.label))); st.colorSpace = T.SRGBColorSpace;
-      const sw = Math.min(W * 0.82, 2.2), sign = new T.Mesh(keep(new T.PlaneGeometry(1, 1)), keep(new T.MeshBasicMaterial({ map: st, transparent: true })));
-      sign.scale.set(sw / W, (sw / 4) / TW3.FH, 1); sign.position.set(0, -0.5 + (sw / 8 + 0.06) / TW3.FH, 0.501);
-      m.add(sign); m.userData.sign = sign;
+    const body = new T.Mesh(box, [sm, sm, topMat, topMat, fm, fm]);
+    body.scale.set(W, FH - 0.02, D); body.castShadow = true; body.receiveShadow = true; g.add(body);
+    g.userData = { body, front, side };
+    // Sims unten und weisse Eckleisten (nichts liegt genau in einer Ebene → kein Flimmern)
+    const add = (geo, mat, x, y, z, sx, sy, sz) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); m.castShadow = true; g.add(m); return m; };
+    add(box, trimMat, 0, -FH / 2 + 0.06, 0, W + 0.08, 0.08, D + 0.08);
+    for (const sx of [-1, 1]) add(box, trimMat, sx * (W / 2 + 0.005), 0, D / 2 + 0.005, 0.1, FH - 0.06, 0.1);
+    if (base) {
+      add(box, keep(new T.MeshStandardMaterial({ map: awnTex('#ef4444') })), 0, FH / 2 - 0.16, D / 2 + 0.2, W * 1.02, 0.05, 0.45).rotation.x = 0.35;
+      const lt = keep(new T.CanvasTexture(baseLabel)); lt.colorSpace = T.SRGBColorSpace;
+      const sg = add(keep(new T.PlaneGeometry(1, 1)), keep(new T.MeshBasicMaterial({ map: lt })), 0, -0.05, D / 2 + 0.04, Math.min(W * 0.5, 2), Math.min(W * 0.5, 2) / 4, 1); sg.castShadow = false;
+      return g;
     }
-    return m;
+    if (f.label) {
+      const st = keep(new T.CanvasTexture(tw3SignCanvas(f.label))); st.colorSpace = T.SRGBColorSpace;
+      const sw = Math.min(W * 0.62, 1.7);
+      const sign = add(keep(new T.PlaneGeometry(1, 1)), keep(new T.MeshBasicMaterial({ map: st, transparent: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })), 0, -0.08, D / 2 + 0.06, sw, sw / 4, 1);
+      sign.castShadow = false;
+    }
+    const deco = f.deco || 'none';
+    if (deco === 'planter' && W > 1.2) {
+      const pw = Math.min(W * 0.84, 3.4);
+      add(box, potMat, 0, -FH / 2 + 0.2, D / 2 + 0.13, pw, 0.14, 0.22);
+      const n = Math.max(3, Math.round(pw / 0.22));
+      for (let i = 0; i < n; i++) { const x = -pw / 2 + 0.1 + (i / (n - 1)) * (pw - 0.2); add(leafG, leafMat, x, -FH / 2 + 0.31, D / 2 + 0.13, 1, 0.8, 1); add(flowerG, flowerMats[(i + (f.lit || 0)) % flowerMats.length], x + 0.04, -FH / 2 + 0.4, D / 2 + 0.17, 1, 1, 1); }
+    } else if (deco === 'awning' && W > 1.2) {
+      add(box, keep(new T.MeshStandardMaterial({ map: awnTex(g2Pick(['#ec4899', '#3b82f6', '#16a34a', '#f59e0b'])) })), 0, FH / 2 - 0.14, D / 2 + 0.18, Math.min(W * 0.86, 3.6), 0.04, 0.36).rotation.x = 0.42;
+    }
+    return g;
   }
   const baseCanvas = tw3Canvas(512, 128, (g, w, h) => {
-    g.fillStyle = '#e2e8f0'; g.fillRect(0, 0, w, h);
-    g.fillStyle = '#94a3b8'; g.fillRect(0, 0, w, 14);
+    g.fillStyle = '#fef3c7'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#fcd34d'; g.fillRect(0, 0, w, 14);
     for (let i = 0; i < 4; i++) { const x = 20 + i * 122; const wg = g.createLinearGradient(x, 30, x, 120); wg.addColorStop(0, '#dbeafe'); wg.addColorStop(1, '#60a5fa'); g.fillStyle = wg; g.fillRect(x, 34, 100, 94); g.fillStyle = 'rgba(255,255,255,.4)'; g.fillRect(x + 8, 40, 10, 80); }
-    g.fillStyle = '#7c4a1e'; g.fillRect(w / 2 - 26, 50, 52, 78); g.fillStyle = '#fde68a'; g.fillRect(w / 2 + 14, 88, 6, 6);
+    g.fillStyle = '#b45309'; g.fillRect(w / 2 - 26, 50, 52, 78); g.fillStyle = '#fde68a'; g.fillRect(w / 2 + 14, 88, 6, 6);
   });
-  const baseLabel = tw3Canvas(512, 128, (g, w, h) => { g.fillStyle = '#111827'; g.fillRect(0, 0, w, h); g.fillStyle = '#fde047'; g.font = '900 70px "Bricolage Grotesque", Lexend, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🏪 START', w / 2, h / 2 + 4); });
-  const floors = []; // Meshes der Stockwerke (Index = Ebene)
+  const baseLabel = tw3Canvas(512, 128, (g, w, h) => { g.fillStyle = '#7c2d12'; g.fillRect(0, 0, w, h); g.fillStyle = '#fde047'; g.font = '900 70px "Bricolage Grotesque", Lexend, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🏪 START', w / 2, h / 2 + 4); });
+  const floors = [];
   function addFloor(b, level) {
     const m = floorMesh(b, b.w, level === 0);
     m.position.set(tw3X(b.x + b.w / 2), TW3.FH * (level + 0.5), 0);
-    if (level === 0) {
-      // Markise und Ladenschild
-      const awn = keep(new T.CanvasTexture(tw3Canvas(256, 32, (g, w, h) => { for (let i = 0; i < 16; i++) { g.fillStyle = i % 2 ? '#ffffff' : '#ef4444'; g.fillRect(i * 16, 0, 16, h); } })));
-      awn.colorSpace = T.SRGBColorSpace;
-      const a = new T.Mesh(box, keep(new T.MeshStandardMaterial({ map: awn })));
-      a.scale.set(1.04, 0.06 / TW3.FH, 0.5 / TW3.D); a.position.set(0, 0.47, 0.62); a.rotation.x = 0.35; m.add(a);
-      const lt = keep(new T.CanvasTexture(baseLabel)); lt.colorSpace = T.SRGBColorSpace;
-      const s = new T.Mesh(keep(new T.PlaneGeometry(1, 1)), keep(new T.MeshBasicMaterial({ map: lt })));
-      s.scale.set(0.5, 0.22, 1); s.position.set(0, 0.3, 0.505); m.add(s);
-    }
     scene.add(m); floors[level] = m;
     return m;
   }
-  /* ---------- Dach mit Antenne (auf dem obersten Stockwerk) ---------- */
-  const roof = new T.Group();
-  const slab = new T.Mesh(box, keep(new T.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 }))); slab.scale.set(1, 0.12, TW3.D + 0.12); slab.position.y = 0.06; slab.castShadow = true; roof.add(slab);
-  const hut = new T.Mesh(box, keep(new T.MeshStandardMaterial({ color: 0xcbd5e1 }))); hut.scale.set(0.7, 0.45, 0.7); hut.position.set(0, 0.34, -0.4); hut.castShadow = true; roof.add(hut);
-  const mast = new T.Mesh(keep(new T.CylinderGeometry(0.03, 0.04, 1.3, 6)), keep(new T.MeshStandardMaterial({ color: 0x374151 }))); mast.position.set(0, 0.8, -0.4); roof.add(mast);
-  const blink = new T.Mesh(keep(new T.SphereGeometry(0.07, 10, 8)), keep(new T.MeshBasicMaterial({ color: 0xef4444 }))); blink.position.set(0, 1.47, -0.4); roof.add(blink);
-  scene.add(roof);
-  function placeRoof() {
-    const tw = game.tw, top = tw.blocks[tw.blocks.length - 1];
-    roof.visible = tw.blocks.length > 1;
-    roof.position.set(tw3X(top.x + top.w / 2), TW3.FH * tw.blocks.length, 0);
-    slab.scale.x = top.w / 10 + 0.12;
-    hut.position.x = Math.min(0.3, top.w / 40);
-  }
+  function placeRoof() { /* kein Dach: es wird immer weitergebaut */ }
+  const blink = { visible: false };
 
   /* ---------- Pendel: das Stockwerk hängt an einem Seil (Aufhängung oben ausserhalb des Bildes) ---------- */
   const ropeMat = keep(new T.MeshStandardMaterial({ color: 0x3f3f46, roughness: 0.55, metalness: 0.3 }));
@@ -259,10 +274,10 @@ async function startTower3D() {
   function starBurst(x, y) { for (let i = 0; i < 16; i++) { const sp = new T.Sprite(starMat.clone()); own.push(sp.material); sp.position.set(x, y, TW3.D / 2 + 0.3); sp.scale.setScalar(0.35); const a = (i / 16) * Math.PI * 2; stars.push({ sp, vx: Math.cos(a) * 3, vy: Math.sin(a) * 3, t: 0 }); scene.add(sp); } }
 
   /* ---------- Spiel-Zustand der Szene ---------- */
-  const S = { camY: 2.2, pivY: 6, t: 0, last: performance.now(), hang: null, falls: [], landT: 0 };
+  const S = { camY: 2.1, pivY: 6, t: 0, last: performance.now(), hang: null, falls: [], landT: 0 };
   game.tw.blocks.forEach((b, i) => addFloor(b, i));
   placeRoof();
-  const ROPE = 3.6, AMP = 0.92;
+  const ROPE = 4.2, AMP = 0.6;
   function setHeight() { const el = $('#twheight b'); if (el) el.textContent = game.tw.blocks.length - 1; }
 
   const tw = game.tw;
@@ -270,7 +285,7 @@ async function startTower3D() {
     /** richtige Antwort: neues Stockwerk hängt am Kran */
     hang(label) {
       const top = tw.blocks[tw.blocks.length - 1];
-      const f = { w: top.w, label, c: COLORS[Math.floor(Math.random() * COLORS.length)], lit: Math.floor(Math.random() * 3), st: g2Pick(STYLES) };
+      const f = { w: top.w, label, c: COLORS[Math.floor(Math.random() * COLORS.length)], lit: Math.floor(Math.random() * 3), st: g2Pick(STYLES), deco: g2Pick(DECOS) };
       f.mesh = floorMesh(f, f.w);
       scene.add(f.mesh);
       tw.hang = f;
@@ -292,7 +307,7 @@ async function startTower3D() {
       }
       S.drop = { m: h.mesh, vy: 0, y1: yLand, done: () => {
         const perfect = Math.abs(x - top.x) < 1.3;
-        const nb = perfect ? { x: top.x, w: Math.min(46, top.w + 2.5), label: h.label, c: h.c, lit: h.lit, st: h.st } : { x: Math.max(x, top.x), w: ov, label: h.label, c: h.c, lit: h.lit, st: h.st };
+        const nb = perfect ? { x: top.x, w: Math.min(46, top.w + 2.5), label: h.label, c: h.c, lit: h.lit, st: h.st, deco: h.deco } : { x: Math.max(x, top.x), w: ov, label: h.label, c: h.c, lit: h.lit, st: h.st, deco: h.deco };
         // überstehendes Stück bricht ab und fällt
         if (!perfect) {
           const cutL = x < top.x, cw = h.w - ov;
@@ -328,16 +343,16 @@ async function startTower3D() {
     const dt = Math.max(0, Math.min(0.05, (now - S.last) / 1000)); S.last = now; S.t += dt;
     const n = tw.blocks.length;
     // Pendel: je höher der Turm, desto schneller
-    tw.swingT += dt * Math.min(3.1, 1.6 + (n - 1) * 0.1);
+    tw.swingT += dt * Math.min(2.2, 1.25 + (n - 1) * 0.05);
     const th = Math.sin(tw.swingT) * AMP;
     const topY = TW3.FH * n;
     S.pivY += (topY + 0.7 + TW3.FH + 0.25 + ROPE - S.pivY) * Math.min(1, dt * 2.5);
-    S.camY += (topY + 0.9 - S.camY) * Math.min(1, dt * 2.2);
+    S.camY += (topY + 1.1 - S.camY) * Math.min(1, dt * 2.2);
     const bx = Math.sin(th) * ROPE, by = S.pivY - Math.cos(th) * ROPE;
     tw.hx = 50 + bx * 10; // Mitte in Prozent (für die Regeln wie in 2D)
-    clamp.position.set(bx, by, 0); clamp.rotation.z = th * 0.55;
+    clamp.position.set(bx, by, 0); clamp.rotation.z = th * 0.3;
     placeRope(0, S.pivY + 6, bx, by + 0.22);
-    if (tw.hang) { const tl = th * 0.55; tw.hang.mesh.position.set(bx - Math.sin(tl) * (TW3.FH / 2 + 0.12), by - Math.cos(tl) * (TW3.FH / 2 + 0.12), 0); tw.hang.mesh.rotation.z = tl; }
+    if (tw.hang) { const tl = th * 0.3; tw.hang.mesh.position.set(bx - Math.sin(tl) * (TW3.FH / 2 + 0.12), by - Math.cos(tl) * (TW3.FH / 2 + 0.12), 0); tw.hang.mesh.rotation.z = tl; }
     // fallen lassen (mit Schwerkraft; die Drehung richtet sich auf)
     if (S.drop) {
       const d = S.drop; d.vy -= 22 * dt;
@@ -352,17 +367,17 @@ async function startTower3D() {
       if (f.t > f.life) { scene.remove(f.m); S.falls.splice(i, 1); }
     }
     // Aufsetzen: kurz zusammendrücken; perfekt: kurz leuchten
-    if (S.land) { S.land.t += dt * 6; const k = Math.min(1, S.land.t); S.land.m.scale.y = TW3.FH * (1 - Math.sin(k * Math.PI) * 0.12); if (k >= 1) { S.land.m.scale.y = TW3.FH; S.land = null; } }
-    if (S.glow) { S.glow.t += dt; const e = Math.max(0, 1 - S.glow.t / 0.8); S.glow.m.material.forEach((mm) => { if (mm.emissive) { mm.emissive.setRGB(1, 0.85, 0.3); mm.emissiveIntensity = e * 0.7; } }); if (e <= 0) S.glow = null; }
+    if (S.land) { S.land.t += dt * 6; const k = Math.min(1, S.land.t); S.land.m.scale.y = 1 - Math.sin(k * Math.PI) * 0.1; if (k >= 1) { S.land.m.scale.y = 1; S.land = null; } }
+    if (S.glow) { S.glow.t += dt; const e = Math.max(0, 1 - S.glow.t / 0.8); S.glow.m.userData.body.material.forEach((mm) => { if (mm.emissive) { mm.emissive.setRGB(1, 0.85, 0.3); mm.emissiveIntensity = e * 0.7; } }); if (e <= 0) S.glow = null; }
     blink.visible = Math.sin(S.t * 5) > 0;
     for (let i = stars.length - 1; i >= 0; i--) { const st = stars[i]; st.t += dt; st.sp.position.x += st.vx * dt; st.sp.position.y += st.vy * dt; st.sp.material.opacity = Math.max(0, 1 - st.t / 0.8); st.sp.material.rotation += dt * 4; if (st.t > 0.8) { scene.remove(st.sp); stars.splice(i, 1); } }
     // Wolken ziehen, Himmel wird mit der Höhe dunkler
     for (const c of clouds) { c.position.x += c.userData.v * dt; if (c.position.x > 30) c.position.x = -30; }
     sky.copy(skyLow).lerp(skyHigh, Math.min(1, topY / 45)); scene.fog.color.copy(sky);
-    // Kamera: frontal, leicht von oben
+    // Kamera: genau von vorne (waagrecht), sie rutscht mit dem Turm nach oben
     const back = portrait ? 16 : 12.5;
-    camera.position.set(0, S.camY + 1.6, back);
-    look.set(0, S.camY - 0.2, 0);
+    camera.position.set(0, S.camY, back);
+    look.set(0, S.camY, 0);
     camera.lookAt(look);
     skyMesh.position.y = 15 + S.camY * 0.55;
     sun.position.set(5, S.camY + 9, 12); sun.target.position.set(0, S.camY - 2, 0);
