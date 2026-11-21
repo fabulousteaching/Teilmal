@@ -93,7 +93,7 @@
 .sn-task { display: grid; place-items: center; margin: 10px auto 6px; }
 .sn-task .task { font-size: clamp(2rem, 7vw, 2.8rem); }
 .sn-task.pop { animation: lv-pop .35s cubic-bezier(.2, 1.4, .4, 1); }
-.sn-stage { position: relative; margin: 0 auto; width: min(96vw, 760px); aspect-ratio: 16 / 10; max-height: calc(100dvh - 330px); border-radius: 24px; overflow: hidden; box-shadow: var(--shadow-card), inset 0 0 0 3px rgba(255, 255, 255, .08); background: #0b1326; touch-action: none; }
+.sn-stage { position: relative; margin: 0 auto; width: min(96vw, 760px); aspect-ratio: 16 / 10; max-height: calc(100dvh - 360px); border-radius: 24px; overflow: hidden; box-shadow: var(--shadow-card), inset 0 0 0 3px rgba(255, 255, 255, .08); background: #0b1326; touch-action: none; }
 .sn-stage canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 .sn-go { position: absolute; inset: 0; display: grid; place-items: center; font: 800 clamp(2rem, 8vw, 3.4rem) var(--font-display); color: #fff; text-shadow: 0 4px 16px rgba(0, 0, 0, .45); pointer-events: none; }
 .sn-go.out { animation: sn-go .9s ease forwards; }
@@ -102,6 +102,8 @@
 .sn-turn { width: 74px; height: 58px; border: 0; border-radius: 18px; background: var(--paper); box-shadow: var(--shadow-soft); font-size: 1.8rem; color: var(--ink-2); cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
 .sn-turn:active { background: var(--cw); color: var(--c); transform: scale(.95); }
 .sn-pad-hint { color: var(--ink-3); font-size: .85rem; }
+/* Handy hochkant: das Feld wird höher statt breiter (mehr Platz zum Lenken) */
+@media (max-width: 560px) and (orientation: portrait) { .sn-stage { aspect-ratio: auto; height: clamp(260px, calc(100dvh - 330px), 560px); max-height: none; } .game-snake .mode-hint { display: none; } }
 @media (hover: hover) and (pointer: fine) { .sn-pad { opacity: .8; } }
 
 /* ---------------- 🧩 1×1-Tafel-Puzzle ---------------- */
@@ -238,6 +240,22 @@
 .lq-btn { min-height: 76px; border: 0; border-radius: 18px; background: var(--qc); color: #fff; font: 800 clamp(1.6rem, 7vw, 2.2rem) var(--font-display); cursor: pointer; box-shadow: inset 0 -5px 0 rgba(0, 0, 0, .2); touch-action: manipulation; }
 .lq-btn:active { transform: scale(.96); }
 .lq-btn:disabled { opacity: .55; }
+@media (max-width: 560px) { .view:has(> .live-play) { padding-top: 12px; } }
+/* Kinder-Ansicht auf dem Handy quer: alles ohne Scrollen */
+@media (max-height: 560px) and (orientation: landscape) {
+  .view:has(> .live-play) { padding-top: 8px; padding-bottom: 12px; }
+  .live-play { gap: .5rem; }
+  .live-me { font-size: .8rem; }
+  .lq-box { gap: 8px; padding: 10px 12px; }
+  .lq-task { font-size: 2.2rem; }
+  .lq-ans { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .lq-btn { min-height: 58px; font-size: 1.6rem; }
+  .live-play.lq .hint { display: none; }
+  .live-play:has(.bg-card) { grid-template-columns: minmax(0, 1fr) auto; align-content: start; column-gap: 14px; }
+  .live-play:has(.bg-card) > * { grid-column: 1; }
+  .live-play:has(.bg-card) > .bg-card { grid-column: 2; grid-row: 1 / span 6; width: calc(100dvh - 90px); gap: 5px; }
+  .live-play:has(.bg-card) > .hint { display: none; }
+}
 
 /* ---------------- 🧭 Rechen-Labyrinth 3D (js/maze3d.js) ---------------- */
 .mz3 { position: relative; width: 100%; height: min(76vh, 720px); min-height: 420px; border-radius: 22px; overflow: hidden; background: #bfe3ff; user-select: none; -webkit-user-select: none; touch-action: none; }
@@ -481,4 +499,56 @@ button.dc-die[data-action]:hover { transform: translateY(-3px); }
   .cs-key { height: 36px; font-size: 1.2rem; border-radius: 11px; }
   .cs-typed { min-width: 110px; font-size: 1.4rem; padding: 0 12px; border-width: 2px; }
   .game-castle .mode-hint { display: none; }
+}
+
+/* =========================================================
+   📱 Handy quer (wenig Höhe): ältere Spiele nebeneinander statt untereinander,
+   damit alles ohne Scrollen auf den Bildschirm passt
+   ========================================================= */
+@media (max-height: 560px) and (orientation: landscape) {
+  .game .mode-hint { display: none; }
+  /* Memory: zwei lange Reihen */
+  .mem-grid { grid-template-columns: none; grid-template-rows: repeat(2, calc((100dvh - 128px) / 2)); grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; max-width: none; }
+  .mem-grid .mem-card, .mem-grid.n16 .mem-card { aspect-ratio: auto; height: 100%; }
+  .mem-grid .mc-face { font-size: clamp(1rem, 3.4vh, 1.5rem); }
+  .mem-grid .mc-back, .mem-grid .mc-face { border-radius: 12px; }
+  /* Tafel-Puzzle: Tafel links (scrollt), Ergebnisse rechts daneben */
+  .game-puzzle:has(.pz-wrap) { grid-template-columns: minmax(0, 1fr) 200px; align-items: start; }
+  .game-puzzle:has(.pz-wrap) > .run-hud { grid-column: 1 / -1; }
+  .game-puzzle .pz-wrap { grid-column: 1; margin: 0; }
+  .game-puzzle .pz-table { --cw: clamp(22px, calc((100vw - 300px) / 11.5), 46px); }
+  .game-puzzle .pz-table.big { --cw: clamp(20px, calc((100vw - 300px) / 11.5), 40px); }
+  .game-puzzle .pz-dock { grid-column: 2; position: sticky; top: 62px; bottom: auto; margin: 0; max-height: calc(100dvh - 76px); overflow: auto; }
+  .game-puzzle .pz-tile { min-width: 46px; height: 42px; font-size: 1.15rem; }
+  /* Zahlen-Schlange: Feld links, Rechnung und Drehknöpfe rechts */
+  .game-snake:has(.sn-stage) { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "hud hud" "stage task" "stage pad"; align-items: center; column-gap: 14px; }
+  .game-snake:has(.sn-stage) > .run-hud { grid-area: hud; }
+  .game-snake .sn-task { grid-area: task; align-self: end; margin: 0; }
+  .game-snake .sn-stage { grid-area: stage; width: auto; height: calc(100dvh - 124px); aspect-ratio: 16 / 10; max-height: none; margin: 0; border-radius: 18px; }
+  .game-snake .sn-pad { grid-area: pad; align-self: start; flex-wrap: wrap; margin: 0; }
+  /* Zielscheibe: Bühne so hoch wie der Bildschirm */
+  .tg-stage { height: calc(100dvh - 80px); min-height: 220px; border-radius: 18px; }
+  /* Turmbau: Kran links, Rechnung rechts */
+  .game-tower:has(.tw-stage) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; column-gap: 14px; }
+  .game-tower:has(.tw-stage) > :is(.run-hud, .tw-clock) { grid-column: 1 / -1; }
+  .game-tower .tw-stage { height: calc(100dvh - 124px); width: 100%; margin: 0; border-radius: 18px; }
+  .game-tower .tw-ask { margin: 0; width: 100%; }
+  .game-tower .tw-answers { grid-template-columns: repeat(2, 1fr); }
+  /* Stimmt das?: Karte links, Knöpfe rechts untereinander */
+  .game-truefalse:has(.tf-deck) { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: stretch; column-gap: 14px; }
+  .game-truefalse:has(.tf-deck) > :is(.run-hud, .tf-clock) { grid-column: 1 / -1; }
+  .game-truefalse .tf-deck { height: calc(100dvh - 124px); }
+  .game-truefalse .tf-btns { grid-template-columns: 1fr; gap: 10px; }
+  .game-truefalse .tf-btn { min-height: 0; }
+}
+/* 3D-Spiele auf dem Handy quer: Bühne so hoch wie der Bildschirm */
+@media (max-height: 560px) and (orientation: landscape) {
+  .g3, .g3-kart, .mz3 { height: calc(100dvh - 80px); min-height: 220px; border-radius: 18px; }
+}
+/* Turbo-Rennen und Labyrinth quer auf dem Handy: kleinerer Joystick, Rangliste ausgeblendet (Platz bleibt oben links sichtbar) */
+@media (max-height: 560px) and (orientation: landscape) {
+  .g2-joy { width: 96px; height: 96px; left: 12px; bottom: 12px; }
+  .g3-kart .kart-rank { display: none; }
+  .g3-kart .kart-map { width: 110px; height: 110px; }
+  .mz3-help { display: none; }
 }

@@ -111,6 +111,8 @@ Am Ende jedes Spiels sehen Kinder mit Klassen-Login die **Top 10 ihrer Klasse** 
 
 Die 3D-Spiele brauchen WebGL (alle aktuellen Tablets und Browser). Fehlt es, startet automatisch eine 2D-Version des Spiels mit denselben Modi. Auf dem Handy im Hochformat wird die Ansicht angepasst (weiterer Blickwinkel).
 
+**Handy und iPad:** Alle Spiele (auch die Live-Spiele aus Kindersicht) sind auf Handy (hoch und quer) und iPad (hoch und quer) geprüft. Hochkant wird der Spieltitel kleiner und der Rand schmaler; quer auf dem Handy fällt der Titel weg, und die Spiele ordnen sich nebeneinander statt untereinander an (z. B. Spielfeld links, Antworten oder Tasten rechts; Memory in zwei langen Reihen; Duell nebeneinander; 3D-Bühnen so hoch wie der Bildschirm, kleinerer Joystick). So passt jedes Spiel ohne Scrollen auf den Bildschirm.
+
 ## Mein Stand und Übungsblatt
 
 - **Einmaleins-Tafel**: eine Zeile pro Reihe (10 Zeilen, beim grossen Einmaleins 20), mal 1 bis mal 10. Eine Rechnung und ihre Tauschaufgabe teilen sich ein Feld. Eingefärbt von „macht noch Mühe“ (rot) bis „sitzt sicher“ (grün). Antippen zeigt Details und eine Rechenhilfe. Auch für Geteilt-Aufgaben.

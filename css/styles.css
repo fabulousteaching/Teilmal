@@ -682,7 +682,16 @@ button.tf:hover { transform: scale(1.12); z-index: 1; box-shadow: var(--shadow-s
 
 /* Duell */
 .duel { display: grid; grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; height: calc(100dvh - 190px); min-height: 440px; max-height: 820px; }
-@media (max-width: 560px) { .game-duel .mode-hint { display: none; } .game-duel .mode-title { font-size: 1.5rem; } .dh-opts .choice { min-height: 54px; font-size: 1.7rem; } .duel-half { padding: 10px; gap: 6px; } }
+@media (max-width: 560px) {
+  .game-duel .mode-hint, .game-duel > .mode-bar { display: none; }
+  .duel { height: calc(100dvh - 96px); min-height: 400px; }
+  .duel .dh-opts { gap: 6px; } .duel .dh-opts .choice { min-height: 50px; padding: .35rem .5rem; font-size: 1.6rem; } .duel .duel-half { padding: 10px; gap: 6px; } .duel .dh-task { font-size: 2rem; }
+}
+/* Handy quer: beide Hälften nebeneinander und kompakt */
+@media (max-height: 560px) and (orientation: landscape) {
+  .game-duel .mode-hint { display: none; }
+  .duel .dh-opts { gap: 6px; } .duel .dh-opts .choice { min-height: 46px; padding: .3rem .5rem; font-size: 1.5rem; } .duel .duel-half { padding: 10px; gap: 6px; } .duel .dh-task { font-size: 2rem; }
+}
 .duel-half { display: grid; grid-template-rows: auto 1fr auto; gap: 10px; padding: 14px; border-radius: 26px; transition: box-shadow .2s, opacity .2s, filter .2s; }
 .duel-half.p0 { background: var(--coral-wash); transform: rotate(180deg); --c: #E8553A; }
 .duel-half.p1 { background: #E3ECFF; --c: #2563EB; }
@@ -695,7 +704,7 @@ button.tf:hover { transform: scale(1.12); z-index: 1; box-shadow: var(--shadow-s
 .duel-half.win { box-shadow: 0 0 0 5px var(--green); }
 .duel-half.locked { opacity: .5; filter: grayscale(.7); }
 .duel-mid { display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; color: var(--ink-3); }
-@media (orientation: landscape) and (min-width: 820px) {
+@media (orientation: landscape) and (min-width: 640px) {
   .duel { grid-template-rows: none; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); height: auto; min-height: 0; }
   .duel-half.p0 { transform: none; }
 }
@@ -1087,7 +1096,8 @@ td.hard-chips { display: table-cell; }
 .rope::before, .rope::after { content: ""; position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; transform: translateY(-50%); }
 .rope::before { left: -8px; background: #E8553A; }
 .rope::after { right: -8px; background: #2563EB; }
-@media (orientation: landscape) and (min-width: 820px) { .rope { width: 130px; } }
+@media (orientation: landscape) and (min-width: 640px) { .rope { width: 130px; } }
+@media (orientation: landscape) and (max-height: 560px) { .rope { width: 70px; } .duel { height: calc(100dvh - 74px); } }
 
 /* Reihen-Treppe: 3 Versuche, rot aufleuchten und verblassen */
 .tries { display: inline-flex; gap: 6px; vertical-align: middle; margin-right: .5rem; }
