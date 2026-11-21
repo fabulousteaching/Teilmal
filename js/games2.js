@@ -291,6 +291,7 @@ function twAnswer(v) {
     return;
   }
   sfx.good();
+  if (tw.r3) { tw.r3.hang(taskText(t, true)); tw.phase = 'drop'; $('#twtip').hidden = false; return; } // 3D-Version (js/tower3d.js)
   // Block erscheint am Kran: so breit wie der oberste Block des Turms
   const top = tw.blocks[tw.blocks.length - 1];
   const el = document.createElement('div');
@@ -322,6 +323,7 @@ function twLoop() {
 function twDrop() {
   const tw = game.tw;
   if (!tw || tw.phase !== 'drop' || !tw.hang || !runOn()) return;
+  if (tw.r3) { tw.r3.drop(); return; }
   tw.phase = 'fall';
   $('#twtip').hidden = true;
   const h = tw.hang, top = tw.blocks[tw.blocks.length - 1];
