@@ -878,11 +878,15 @@ function startShips(opts = {}) {
     </div>
     </div>
     <p class="mode-hint">Tippe auf ein Feld der gegnerischen Tafel und rechne es aus (Spalte · Reihe). Richtig gerechnet → Schuss! Bei einem Treffer darfst du nochmals.</p>`);
+  game.sh.phase = 'choose';
   if (three) sh3Mount(three);
   shDraw();
-  shStatus(game.sh.typing ? 'Du beginnst! Tippe ein Feld an – du rechnest schon so sicher, dass du die Ergebnisse selbst eintippst.' : 'Du beginnst! Tippe ein Feld an.');
+  shStatus('Wie sollen deine Schiffe aufs Meer?');
+  $('.sh-play').insertAdjacentHTML('beforeend', `<div class="sh-choose" id="shchoose"><div class="sh-choose-card"><h2>🚢 Deine Flotte</h2><p>Wie sollen deine 5 Schiffe aufs Meer?</p>
+    <div class="sh-choose-btns"><button type="button" class="btn primary big" data-action="sh-choose" data-v="self">✋ Selber setzen</button><button type="button" class="btn secondary big" data-action="sh-choose" data-v="random">🎲 Zufällig</button></div></div></div>`);
   setGameKeys((e) => {
     const sh = game.sh;
+    if (sh?.phase === 'place' && (e.key === 'r' || e.key === 'R' || e.key === ' ')) { e.preventDefault(); shRotate(); return; }
     if (!sh?.ask || !sh.typing || sh.busy) return;
     if (/^[0-9]$/.test(e.key)) { e.preventDefault(); game.typeKey?.(e.key); }
     else if (e.key === 'Backspace') { e.preventDefault(); game.typeKey?.('back'); }
@@ -902,7 +906,7 @@ function shBoardHTML(b, own) {
     for (let c = 0; c < s.C; c++) {
       const k = `${r}:${c}`, shot = b.shots.get(k), ship = b.cells.get(k), sunk = ship && ship.hits >= ship.len;
       const cls = ['sh-cell', shot === 'hit' ? 's-hit' : shot === 'miss' ? 's-miss' : '', (own || sunk) && ship ? `s-boat${sunk ? ' s-sunk' : ''} ${shBoatCls(ship, r, c)}` : ''].join(' ');
-      h += own ? `<div class="${cls}" data-k="${k}"></div>` : `<button type="button" class="${cls}" data-action="sh-cell" data-r="${r}" data-c="${c}" ${shot ? 'disabled' : ''} aria-label="${c + 1} mal ${s.rows[r]}"></button>`;
+      h += own && s.phase === 'place' ? `<button type="button" class="${cls}" data-action="sh-place" data-r="${r}" data-c="${c}" data-k="${k}"></button>` : own ? `<div class="${cls}" data-k="${k}"></div>` : `<button type="button" class="${cls}" data-action="sh-cell" data-r="${r}" data-c="${c}" ${shot ? 'disabled' : ''} aria-label="${c + 1} mal ${s.rows[r]}"></button>`;
     }
   }
   return h;
@@ -920,7 +924,7 @@ function shDraw() {
 function shStatus(t, cls = '') { const el = $('#shstatus'); if (el) { el.className = `sh-status ${cls}`; el.innerHTML = t; } }
 function shCell(r, c) {
   const s = game.sh;
-  if (!s || s.turn !== 'me' || s.busy || s.ask || game.over) return;
+  if (!s || s.phase !== 'play' || s.turn !== 'me' || s.busy || s.ask || game.over) return;
   if (s.cpu.shots.has(`${r}:${c}`)) return;
   const t = makeTask(c + 1, s.rows[r], 'mul'); // Spalte · Reihe (wie im Training: 3 · 7 gehört zur 7er-Reihe)
   t.shownAt = performance.now();
@@ -943,6 +947,98 @@ function shCell(r, c) {
   s.r3?.aim(r, c);
   s.typed = '';
   game.typeKey = (k) => { if (game.sh?.ask && !game.sh.busy) game.sh.typed = g2Type(game.sh.typed, k, $('#shtyped'), (v) => shAnswer(v)); };
+}
+/* ---------- Eigene Flotte: zufällig oder selber setzen ---------- */
+function shChoose(v) {
+  const s = game.sh;
+  if (!s || s.phase !== 'choose') return;
+  $('#shchoose')?.remove();
+  if (v === 'random') { shStartPlay(); return; }
+  s.phase = 'place';
+  s.me = { cells: new Map(), ships: [], shots: new Map() };
+  s.place = { queue: [...SH_FLEET], hor: true };
+  $('.game-ships')?.classList.add('placing');
+  s.r3?.buildOwn();
+  shDraw(); shPlaceUI();
+  if (!s.r3) $('#shme')?.addEventListener('mouseover', (e) => { const b = e.target.closest('[data-action="sh-place"]'); if (b) shPlaceHover(+b.dataset.r, +b.dataset.c); });
+}
+function shPlaceUI() {
+  const s = game.sh, q = s.place.queue;
+  const done = !q.length;
+  shStatus(done ? '<b>Alle Schiffe sind auf dem Meer!</b> Tippe ein Schiff an, um es nochmals zu setzen – oder los geht’s.'
+    : `Setze dein Schiff mit <b>${q[0]} Feldern</b> ${'■'.repeat(q[0])} – tippe aufs Meer. Schiffe dürfen sich nicht berühren.`);
+  const box = $('#shplace') || $('.sh-play').insertAdjacentElement('afterbegin', Object.assign(document.createElement('div'), { id: 'shplace', className: 'sh-place-bar' }));
+  box.innerHTML = done ? `<button type="button" class="btn ghost" data-action="sh-reset">↺ Neu setzen</button><button type="button" class="btn primary big" data-action="sh-go">Los geht’s! 🚀</button>`
+    : `<button type="button" class="btn secondary" data-action="sh-rotate">↻ Drehen (${s.place.hor ? 'waagrecht' : 'senkrecht'})</button><button type="button" class="btn ghost" data-action="sh-rand">🎲 Rest zufällig</button>${s.me.ships.length ? '<button type="button" class="btn ghost" data-action="sh-reset">↺ Neu</button>' : ''}`;
+}
+function shFits(r, c, len, hor) {
+  const s = game.sh;
+  for (let i = 0; i < len; i++) {
+    const rr = r + (hor ? 0 : i), cc = c + (hor ? i : 0);
+    if (rr < 0 || cc < 0 || rr >= s.R || cc >= s.C) return false;
+    for (const dr of [-1, 0, 1]) for (const dc of [-1, 0, 1]) if (s.me.cells.has(`${rr + dr}:${cc + dc}`)) return false;
+  }
+  return true;
+}
+function shPlaceHover(r, c) {
+  const s = game.sh;
+  if (s?.phase !== 'place') return;
+  const len = s.place.queue[0];
+  if (!len) { s.r3?.ghost(null); return; }
+  const ok = shFits(r, c, len, s.place.hor);
+  if (s.r3) s.r3.ghost({ r, c, len, hor: s.place.hor, ok });
+  else $$('#shme .sh-cell').forEach((b) => { const br = +b.dataset.r, bc = +b.dataset.c; const on = s.place.hor ? br === r && bc >= c && bc < c + len : bc === c && br >= r && br < r + len; b.classList.toggle('s-ghost', on && ok); b.classList.toggle('s-ghostbad', on && !ok); });
+  s.place.last = [r, c];
+}
+function shPlaceAt(r, c) {
+  const s = game.sh;
+  if (s?.phase !== 'place') return;
+  // auf ein gesetztes Schiff getippt: wieder hochnehmen
+  const hit = s.me.cells.get(`${r}:${c}`);
+  if (hit) {
+    s.me.ships = s.me.ships.filter((x) => x !== hit);
+    hit.pts.forEach(([pr, pc]) => s.me.cells.delete(`${pr}:${pc}`));
+    s.place.queue.unshift(hit.len); s.place.hor = hit.hor;
+    tone([520, 390], 0.06, 'sine', 0.04);
+    s.r3?.buildOwn(); shDraw(); shPlaceUI(); shPlaceHover(hit.pts[0][0], hit.pts[0][1]);
+    return;
+  }
+  const len = s.place.queue[0];
+  if (!len) return;
+  if (!shFits(r, c, len, s.place.hor)) { tone([200], 0.08, 'square', 0.04); shStatus(`Da passt das Schiff nicht hin – es ragt hinaus oder berührt ein anderes. ${s.place.hor ? 'Versuch es weiter links' : 'Versuch es weiter oben'} oder drehe es.`, 'bad'); return; }
+  const pts = Array.from({ length: len }, (_, i) => [r + (s.place.hor ? 0 : i), c + (s.place.hor ? i : 0)]);
+  const ship = { pts, hits: 0, len, hor: s.place.hor };
+  pts.forEach(([pr, pc]) => s.me.cells.set(`${pr}:${pc}`, ship));
+  s.me.ships.push(ship); s.place.queue.shift();
+  tone([523, 659, 784], 0.06, 'triangle', 0.05);
+  s.r3?.buildOwn(); s.r3?.ghost(null);
+  shDraw(); shPlaceUI();
+}
+function shRotate() { const s = game.sh; if (s?.phase !== 'place') return; s.place.hor = !s.place.hor; shPlaceUI(); if (s.place.last) shPlaceHover(...s.place.last); }
+function shRandRest() {
+  const s = game.sh;
+  if (s?.phase !== 'place') return;
+  for (let tries = 0; tries < 300 && s.place.queue.length; tries++) {
+    const len = s.place.queue[0], hor = Math.random() < 0.5, r = Math.floor(Math.random() * s.R), c = Math.floor(Math.random() * s.C);
+    if (!shFits(r, c, len, hor)) continue;
+    const pts = Array.from({ length: len }, (_, i) => [r + (hor ? 0 : i), c + (hor ? i : 0)]);
+    const ship = { pts, hits: 0, len, hor };
+    pts.forEach(([pr, pc]) => s.me.cells.set(`${pr}:${pc}`, ship));
+    s.me.ships.push(ship); s.place.queue.shift();
+  }
+  if (s.place.queue.length) { s.me = { cells: new Map(), ships: [], shots: new Map() }; s.place.queue = [...SH_FLEET]; shRandRest(); return; }
+  s.r3?.buildOwn(); s.r3?.ghost(null); shDraw(); shPlaceUI();
+}
+function shResetPlace() { const s = game.sh; if (s?.phase !== 'place') return; s.me = { cells: new Map(), ships: [], shots: new Map() }; s.place.queue = [...SH_FLEET]; s.r3?.buildOwn(); shDraw(); shPlaceUI(); }
+function shStartPlay() {
+  const s = game.sh;
+  if (s.phase === 'place' && s.place.queue.length) return;
+  s.phase = 'play';
+  $('#shplace')?.remove(); $('#shchoose')?.remove();
+  $('.game-ships')?.classList.remove('placing');
+  s.r3?.ghost(null); s.r3?.buildOwn();
+  shDraw();
+  shStatus(s.typing ? 'Du beginnst! Tippe ein Feld an – du rechnest schon so sicher, dass du die Ergebnisse selbst eintippst.' : 'Du beginnst! Tippe ein Feld an.');
 }
 function shClose() {
   const s = game.sh;

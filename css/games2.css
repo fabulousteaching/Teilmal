@@ -596,7 +596,7 @@ button.dc-die[data-action]:hover { transform: translateY(-3px); }
 @keyframes cs3-flash { 20% { opacity: 1; } }
 
 /* ---------------- 🚢 Schiffe versenken 3D (js/ships3d.js) und Eintippen ---------------- */
-.sh-sea { position: relative; width: 100%; aspect-ratio: 1.12; max-height: calc(100dvh - 230px); border-radius: 18px; overflow: hidden; background: #0b4f8a; box-shadow: var(--shadow-card); touch-action: manipulation; cursor: pointer; }
+.sh-sea { position: relative; width: 100%; aspect-ratio: 1.3; max-height: calc(100dvh - 230px); border-radius: 18px; overflow: hidden; background: #0b4f8a; box-shadow: var(--shadow-card); touch-action: manipulation; cursor: pointer; }
 .sh-side.mine .sh-sea { cursor: default; }
 .sh3-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .sh-sea.wait .sh3-canvas { filter: brightness(.8) saturate(.85); }
@@ -686,4 +686,25 @@ button.dc-die[data-action]:hover { transform: translateY(-3px); }
   .cs3-pad { width: min(440px, 62vw); padding: 6px 8px 8px; gap: 4px; }
   .cs3-pad .cs-typed { font-size: 1.25rem; min-width: 110px; padding: 0 12px; }
   .cs3-keys .cs-key { height: 34px; font-size: 1.1rem; }
+}
+
+/* Schiffe versenken: Flotte wählen und selber setzen */
+.sh-play { position: relative; }
+.sh-choose { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; background: rgba(15, 23, 42, .35); border-radius: 18px; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+.sh-choose-card { width: min(440px, 100%); padding: 18px 20px; border-radius: 24px; background: var(--paper); box-shadow: var(--shadow-pop); text-align: center; display: grid; gap: 10px; animation: sh-up .3s ease; }
+.sh-choose-card h2 { margin: 0; }
+.sh-choose-card p { margin: 0; color: var(--ink-2); }
+.sh-choose-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sh-place-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 0 auto 8px; }
+.game-ships.placing .sh-side.enemy { display: none; }
+.game-ships.placing .sh-wrap { grid-template-columns: minmax(0, 1fr); }
+.game-ships.placing .sh-side.mine { width: min(100%, 760px, calc((100dvh - 300px) * 1.12)); margin: 0 auto; }
+.game-ships.placing .sh-side.mine .sh-sea { cursor: pointer; }
+.sh-cell.s-ghost { background: rgba(34, 197, 94, .7) !important; }
+.sh-cell.s-ghostbad { background: rgba(239, 68, 68, .6) !important; }
+@media (max-height: 560px) and (orientation: landscape) {
+  .game-ships.placing .sh-play { grid-template-areas: "enemy status" "enemy bar"; }
+  .game-ships.placing .sh-side.mine { grid-area: enemy; width: auto; }
+  .game-ships.placing .sh-side.mine .sh-sea { width: calc((100dvh - 92px) * 1.12); max-width: 62vw; max-height: none; }
+  .game-ships.placing .sh-place-bar { grid-area: bar; flex-direction: column; align-items: stretch; }
 }
