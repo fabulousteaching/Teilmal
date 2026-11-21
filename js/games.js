@@ -27,11 +27,11 @@ const GAMES = [
     howto: 'Du läufst mit deinem Avatar durch einen riesigen Heckengarten. An jeder Kreuzung erscheint eine Rechnung, und drei magische Tore warten, über jedem ein Ergebnis. Hinter jedem Tor geht ein Gang weiter, aber nur das richtige führt zum Schatz – die Lichtsäule über den Hecken zeigt, wo er ungefähr liegt. Achtung Fallen: Stachelplatten fahren hoch, Falltüren klappen auf, Dornenranken stechen – pass den richtigen Moment ab! In Sackgassen findest du Belohnungen. Die Karte oben rechts zeigt, wo du schon warst. Steuern: Pfeiltasten (↑ gehen, ← → drehen) oder der Joystick.' },
   { id: 'tower', name: 'Turmbau', desc: 'Richtig gerechnet? Dann kommt ein Block – bau den höchsten Turm!', color: 'sun', art: '<span class="emo">🏗️</span>', three: true, modes: ['countdown', 'survive'],
     howto: 'Rechne die Aufgabe und tippe das richtige Ergebnis an. Dann hängt ein Stockwerk an einem Seil und schwingt hin und her. Tippe im richtigen Moment ins Bild – das Stockwerk fällt auf den Turm. Was übersteht, bricht ab, und das nächste wird schmaler. Triffst du genau, gibt es «Perfekt!» und es wird wieder etwas breiter.' },
-  { id: 'snake', name: 'Zahlen-Schlange', desc: 'Friss das richtige Ergebnis und werde immer länger!', color: 'lime', art: '<span class="emo">🐍</span>', modes: ['sudden'],
-    howto: 'Oben steht eine Rechnung, auf dem Feld leuchten drei Zahlen. Lenk die Schlange zur richtigen – sie frisst sie und wird länger. Falsche Zahlen machen sie kürzer. Beisst sie sich mit dem Kopf in den eigenen Körper, ist das Spiel vorbei – je länger sie wird, desto kniffliger! Lenken: Pfeiltasten ↑ ↓ ← → (auch schräg) – die Schlange schwimmt weich in diese Richtung. Auf dem Tablet mit dem Joystick oder Finger aufs Feld halten.' },
+  { id: 'snake', name: 'Zahlen-Schlange', desc: 'Friss das richtige Ergebnis und werde immer länger!', color: 'lime', art: '<span class="emo">🐍</span>', modes: ['survive'],
+    howto: 'Oben steht eine Rechnung, auf dem Feld leuchten drei Zahlen. Lenk die Schlange zur richtigen – sie frisst sie und wird länger. Eine falsche Zahl macht sie kürzer und kostet ein Leben (du hast 3). Beisst sie sich mit dem Kopf in den eigenen Körper, ist das Spiel sofort vorbei – je länger, desto kniffliger! Lenken: Pfeiltasten ↑ ↓ ← → (auch schräg) – die Schlange schwimmt weich in diese Richtung. Auf dem Tablet mit dem Joystick oder Finger aufs Feld halten.' },
   { id: 'puzzle', name: '1×1-Tafel-Puzzle', desc: 'Reihe mal Spalte: Rechne aus, welches Ergebnis in welches Feld gehört!', color: 'purple', art: '<span class="emo">🧩</span>', modes: ['speed'],
     howto: 'Eine leere Einmaleins-Tafel: Nur die Reihen- und Spaltenzahlen stehen da. Einige Felder sind markiert, unten liegen ihre Ergebnisse. Weil keine anderen Ergebnisse in der Tafel stehen, musst du rechnen: Tippe ein markiertes Feld an – Reihe und Spalte leuchten auf – und wähle das passende Ergebnis (oder zieh es hinein). Ein falscher Platz kostet 3 Sekunden.' },
-  { id: 'castle', name: 'Burg verteidigen', desc: 'Monster greifen an – tipp ihr Ergebnis, und die Kanone feuert!', color: 'night', art: '<span class="emo">🏰</span>', three: true, modes: ['survive', 'countdown'],
+  { id: 'castle', name: 'Burg verteidigen', desc: 'Monster greifen an – tipp ihr Ergebnis, und die Kanone feuert!', color: 'night', art: '<span class="emo">🏰</span>', three: true, modes: ['survive', 'sudden'],
     howto: 'Du stehst oben auf der Burgmauer. Auf vier Wegen laufen Monster auf die Burg zu – über jedem steht eine Rechnung. Tippe das Ergebnis eines Monsters ein (Zahlentasten unten oder Tastatur): Sobald die Zahl stimmt, dreht sich eine Kanone und schiesst es weg. Welches Monster du zuerst abwehrst, entscheidest du. Je mehr du schaffst, desto mehr und schnellere Monster kommen.' },
   { id: 'ships', name: 'Schiffe versenken', desc: 'Rechne das Feld aus – dann darfst du schiessen!', color: 'blue', art: '<span class="emo">🚢</span>', three: true, modes: [], mulOnly: true,
     howto: 'Du und der Computer habt je fünf Schiffe auf einer Einmaleins-Tafel versteckt. Tippe ein Feld auf der gegnerischen Tafel an und rechne es aus (Spalte mal Reihe). Nur wenn du richtig rechnest, wird geschossen: Treffer 💥 – du darfst nochmals. Wasser 💧 – der Computer ist dran. Wer zuerst alle Schiffe versenkt, gewinnt.' },
@@ -103,14 +103,14 @@ const GAME_MODES = {
   countdown: { name: 'Countdown', icon: () => icon('clock'), short: '60 Sekunden',
     desc: (id) => ({ runner: 'Lauf 60 Sekunden lang durch möglichst viele richtige Bögen. Hindernisse bremsen dich, kosten aber kein Leben.', maze: 'Sanduhr: Du startest mit 60 Sekunden. Jedes richtige Tor +8 s, Sanduhren ⏳ in Sackgassen +5 s; falsches Tor −5 s, Falle −4 s. Wie weit kommst du – schaffst du es bis zum Schatz?', tower: 'Bau in 60 Sekunden einen möglichst hohen Turm.', snake: 'Friss in 60 Sekunden möglichst viele richtige Zahlen.', castle: 'Wehre in 60 Sekunden möglichst viele Monster ab. Ein Monster, das die Burg erreicht, kostet nichts – bringt aber auch keinen Punkt.' }[id] || 'Möglichst viele richtige Antworten in 60 Sekunden. Extrazeit gibt es nicht.') },
   sudden: { name: 'Ein Leben', icon: () => HEART_SVG, short: 'bis zum 1. Fehler',
-    desc: (id) => (id === 'snake' ? 'Werde so lang wie möglich! Jede richtige Zahl macht dich länger, falsche Zahlen kürzer. Beisst du dich selbst, ist das Spiel vorbei. Alle 5 richtigen wirst du schneller.'
+    desc: (id) => (id === 'castle' ? 'Nur ein Leben: Das erste Monster, das die Burg erreicht, beendet das Spiel. Wie viele wehrst du ab?'
       : 'Nur ein Leben: Lauf so weit du kannst. Beim ersten Hindernis, Absturz oder falscher Antwort ist es vorbei.') },
   survive: { name: 'Survive', icon: () => HEART_SVG, short: '3 Leben',
     desc: (id) => id === 'runner' ? '3 Leben – lauf so weit wie möglich. Eine falsche Antwort, ein Hindernis oder ein Sturz in einen Abgrund kostet ein Leben. Jede richtige Antwort macht dich ein bisschen schneller.'
       : id === 'maze' ? 'Fallen-Labyrinth: 3 Leben, 24 Tore bis zum Schatz. Stacheln, Falltüren, Dornen und falsche Tore kosten je ein Leben. Herzen ❤️ in Sackgassen geben eines zurück.'
         : id === 'tower' ? '3 Leben – eine falsche Antwort oder ein Block, der danebenfällt, kostet eines. Je höher der Turm, desto schneller schwingt der Kran.'
           : id === 'castle' ? '3 Leben – jedes Monster, das die Burg erreicht, kostet eines. Alle 5 abgewehrten Monster kommen mehr und schnellere.'
-          : id === 'snake' ? '3 Leben – eine falsche Zahl oder ein Biss in den eigenen Schwanz kostet eines. Alle 5 richtigen wird die Schlange schneller.' : `3 Leben – halte so lange wie möglich durch. Jede falsche Antwort kostet ein Leben. Alle 5 richtigen kommt ein neues Level, und du hast 10 % weniger Zeit pro Rechnung.${id === 'meteor' ? ' Beim letzten Leben fliegt ab und zu ein Ufo vorbei: Triffst du es, gibt es ein Extraleben.' : ''}` },
+          : id === 'snake' ? '3 Leben: Jede falsche Zahl kostet ein Leben. Beisst du dich selbst, ist es sofort vorbei. Jede richtige Zahl macht dich länger, alle 5 richtigen wirst du schneller.' : `3 Leben – halte so lange wie möglich durch. Jede falsche Antwort kostet ein Leben. Alle 5 richtigen kommt ein neues Level, und du hast 10 % weniger Zeit pro Rechnung.${id === 'meteor' ? ' Beim letzten Leben fliegt ab und zu ein Ufo vorbei: Triffst du es, gibt es ein Extraleben.' : ''}` },
   speed: { name: 'Speed', icon: () => icon('bolt'), short: '20 richtige',
     desc: (id) => (id === 'memory' ? 'Finde alle Paare so schnell wie möglich. Ein falsches Paar kostet 3 Sekunden.'
       : id === 'puzzle' ? 'Leg alle Teile so schnell wie möglich an den richtigen Platz. Ein falscher Platz kostet 3 Sekunden.'
@@ -125,7 +125,7 @@ function gameModeOf(id) {
 }
 // Turbo-Rennen: seit den neuen Strecken und dem Windschatten eine neue Bestenliste («rennen»)
 // Zahlen-Schlange: seit der freien Schlange nur noch «Beiss dich nicht» – eigene Bestenliste («schlange»)
-const boardKey = (id, mode, op) => (id === 'runner' && mode === 'sudden' ? `laufeins:survive:${op}` : id === 'snake' ? `schlange:survive:${op}` : `${id === 'kart' ? 'rennen' : id}:${mode}:${op}`);
+const boardKey = (id, mode, op) => (id === 'runner' && mode === 'sudden' ? `laufeins:survive:${op}` : id === 'castle' && mode === 'sudden' ? `burgeins:survive:${op}` : id === 'snake' ? `schlange:survive:${op}` : `${id === 'kart' ? 'rennen' : id}:${mode}:${op}`);
 const boardOf = (id, mode) => boardKey(id, mode, practiceSettings().op);
 /** Modi mit Leben: Survive (3) und Ein Leben (1) */
 const livesMode = (m) => m === 'survive' || m === 'sudden';
@@ -262,7 +262,7 @@ function runFinish(why) {
 const STAR_LIMITS = {
   countdown: { elfmeter: [6, 11, 16], meteor: [6, 11, 16], frog: [6, 11, 16], target: [6, 11, 16], truefalse: [12, 22, 32], runner: [4, 7, 10], maze: [6, 11, 16], tower: [4, 8, 12], snake: [5, 9, 14], castle: [8, 14, 20] },
   survive: { elfmeter: [6, 12, 20], meteor: [6, 12, 20], frog: [6, 12, 20], target: [6, 12, 20], truefalse: [10, 20, 35], runner: [5, 10, 18], maze: [5, 10, 18], tower: [5, 10, 18], snake: [5, 10, 18], castle: [8, 16, 26] },
-  sudden: { runner: [3, 7, 12], snake: [5, 10, 18] },
+  sudden: { runner: [3, 7, 12], snake: [5, 10, 18], castle: [5, 10, 18] },
   speed: { elfmeter: [140, 100, 75], meteor: [140, 100, 70], frog: [150, 110, 80], target: [150, 105, 80], truefalse: [90, 60, 40], memory: [80, 50, 32], puzzle: [150, 100, 65], maze: [230, 165, 120] },
 };
 function runStars(r, score) {
@@ -291,7 +291,7 @@ function showRunResult(r) {
   if (rec) { db.prog.best[key] = score; saveDB(); }
   const st = runStars(r, score);
   if (st >= 2 || rec) { sfx.win(); confetti(); }
-  const title = { time: 'Zeit ist um!', lives: r.id === 'snake' ? 'Autsch – in dich selbst gebissen!' : 'Keine Leben mehr!', done: r.id === 'memory' ? 'Alle Paare gefunden!' : r.id === 'puzzle' ? 'Puzzle fertig!' : r.id === 'maze' ? 'Schatz gefunden! 💎' : 'Geschafft!' }[r.why] || 'Fertig!';
+  const title = { time: 'Zeit ist um!', lives: r.id === 'snake' && r.bit ? 'Autsch – in dich selbst gebissen!' : 'Keine Leben mehr!', done: r.id === 'memory' ? 'Alle Paare gefunden!' : r.id === 'puzzle' ? 'Puzzle fertig!' : r.id === 'maze' ? 'Schatz gefunden! 💎' : 'Geschafft!' }[r.why] || 'Fertig!';
   const line = lower
     ? `${r.id === 'memory' ? `${r.goal} Paare` : r.id === 'puzzle' ? `${r.goal} Teile` : `${r.goal} richtige`} in <b>${fmtSec(score)} s</b>${r.wrong ? ` · ${r.wrong} falsch` : ' · ohne Fehler'}`
     : `<b>${r.ok}</b> ${(typeof g2Noun === 'function' && g2Noun(r.id, r.ok)) || (r.ok === 1 ? 'richtige Antwort' : 'richtige Antworten')}${r.mode === 'countdown' ? (r.id === 'maze' ? (r.why === 'done' ? ' – Schatz erreicht!' : ', bevor die Sanduhr ablief') : ' in 60 Sekunden') : ''}${livesMode(r.mode) ? ` · <b>Level ${Math.floor(r.ok / SURVIVE.step) + 1}</b> erreicht` : ''}${r.wrong ? ` · ${r.wrong} falsch` : ''}`;

@@ -567,8 +567,9 @@ function snStep(dt) {
       s.len = Math.max(SN.LEN0 * 0.7, s.len - SN.SHRINK);
       s.flash = 0.45;
       s.floats.push({ x: f.x, y: f.y, text: `Nein: ${taskText(t, true)}`, good: false, t: 0 });
-      // kostet kein Leben – nur Länge; für «Merk dir» festhalten
-      r.wrong++; r.streak = 0; r.wrongs.push(t); runHud();
+      // falsche Zahl: kürzer und ein Leben weg (3 Leben); nach dem dritten ist Schluss
+      if (runWrong(t)) { s.dead = true; return; }
+      snTask();
     }
     return;
   }
@@ -579,7 +580,9 @@ function snBite() {
   snBurst(s.x, s.y, ['#ef4444', '#fca5a5', '#ffffff'], 30);
   s.floats.push({ x: s.x, y: s.y, text: 'Autsch – in dich selbst gebissen!', good: false, t: 0 });
   sfx.bad(); tone([330, 220, 147], 0.14, 'sawtooth', 0.06);
-  runWrong();
+  // in sich selbst gebissen: sofort vorbei, egal wie viele Leben noch übrig sind
+  if (game.run) game.run.bit = true;
+  runFinish('lives');
 }
 function snBurst(x, y, cols, n) {
   const s = game.sn;
