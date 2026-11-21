@@ -276,6 +276,9 @@
 .mz3-flash.good { background: radial-gradient(circle, transparent 55%, rgba(34, 197, 94, .45)); }
 .mz3-flash.bad { background: radial-gradient(circle, transparent 50%, rgba(239, 68, 68, .5)); }
 .mz3-flash.on { opacity: 1; transition: none; }
+.mz3-map { position: absolute; right: 10px; top: 10px; z-index: 3; width: clamp(92px, 17vw, 150px); height: auto; aspect-ratio: 1; border-radius: 14px; box-shadow: 0 8px 20px -10px rgba(0, 0, 0, .6); pointer-events: none; }
+@media (max-width: 600px) { .mz3-map { width: 84px; top: 52px; } }
+@media (max-height: 560px) and (orientation: landscape) { .mz3-map { width: 92px; } }
 .mz3-help { position: absolute; right: 14px; bottom: 16px; z-index: 4; display: flex; flex-wrap: wrap; gap: 6px 12px; max-width: 60%; padding: 8px 14px; border-radius: 16px; background: rgba(10, 20, 30, .6); color: #fff; font-size: .85rem; pointer-events: none; transition: opacity .6s; }
 .mz3-help b { padding: 0 .3em; border-radius: 6px; background: rgba(255, 255, 255, .2); }
 .mz3-help small { flex-basis: 100%; opacity: .75; }
@@ -286,7 +289,7 @@
 .g2-joy i { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #c7d2fe 60%, #818cf8); box-shadow: 0 6px 14px rgba(0, 0, 0, .35); transition: transform .12s; }
 .g2-joy.on i { transition: none; }
 @media (hover: hover) and (pointer: fine) { .g2-joy { opacity: .7; } }
-@media (max-width: 600px) { .mz3 { height: min(72vh, 640px); border-radius: 16px; } .mz3-ask { top: 56px; } .g2-joy { width: 118px; height: 118px; } }
+@media (max-width: 600px) { .mz3 { height: min(72vh, 640px); border-radius: 16px; } .mz3-ask { top: auto; bottom: 12px; left: auto; right: 10px; transform: none; min-width: 0; max-width: calc(100% - 150px); padding: 6px 14px 8px; } .mz3-ask.pop { animation: none; } .mz3-ask.bad { animation: shake .35s; } .mz3-ask .mz3-q { font-size: 1.6rem; } .mz3-ask small { font-size: .58rem; } .g2-joy { width: 118px; height: 118px; } }
 
 /* Turbo-Rennen: Joystick statt der Lenk-Anzeigen links/rechts (Tippen auf die Bildhälften geht weiterhin) */
 .kart-joy { left: 16px; bottom: 16px; }
