@@ -31,6 +31,12 @@ const GAMES = [
     howto: 'Oben steht eine Rechnung, auf dem Feld leuchten drei Zahlen. Lenk die Schlange zur richtigen – sie frisst sie und wird länger. Falsche Zahlen machen sie kürzer. Beisst sie sich mit dem Kopf in den eigenen Körper, ist das Spiel vorbei – je länger sie wird, desto kniffliger! Lenken: Finger oder Maus aufs Feld halten, Pfeiltasten ← → oder die Drehknöpfe.' },
   { id: 'puzzle', name: '1×1-Tafel-Puzzle', desc: 'In der Einmaleins-Tafel fehlen Ergebnisse – setz sie ein!', color: 'purple', art: '<span class="emo">🧩</span>', modes: ['speed'],
     howto: 'Die ganze Einmaleins-Tafel – aber einige Felder sind leer. Unten liegen die fehlenden Ergebnisse. Zieh jedes an den richtigen Platz oder tippe zuerst das Ergebnis und dann das Feld an. Ein falscher Platz kostet 3 Sekunden.' },
+  { id: 'castle', name: 'Burg verteidigen', desc: 'Monster greifen an – tipp ihr Ergebnis, und die Kanone feuert!', color: 'night', art: '<span class="emo">🏰</span>', modes: ['survive', 'countdown'],
+    howto: 'Monster laufen auf deine Burg zu, jedes trägt eine Rechnung. Tippe das Ergebnis eines Monsters ein (Zahlentasten unten oder Tastatur) – sobald die Zahl stimmt, feuert die Kanone. Welches Monster du zuerst abwehrst, entscheidest du. Je mehr du schaffst, desto mehr und schnellere Monster kommen.' },
+  { id: 'ships', name: 'Schiffe versenken', desc: 'Rechne das Feld aus – dann darfst du schiessen!', color: 'blue', art: '<span class="emo">🚢</span>', modes: [], mulOnly: true,
+    howto: 'Du und der Computer habt je fünf Schiffe auf einer Einmaleins-Tafel versteckt. Tippe ein Feld auf der gegnerischen Tafel an und rechne es aus (Spalte mal Reihe). Nur wenn du richtig rechnest, wird geschossen: Treffer 💥 – du darfst nochmals. Wasser 💧 – der Computer ist dran. Wer zuerst alle Schiffe versenkt, gewinnt.' },
+  { id: 'dice', name: 'Würfel-Duell', desc: 'Zwei Würfel, eine Zielzahl: Wer kommt näher – du oder Robo?', color: 'coral', art: '<span class="emo">🎲</span>', modes: [], mulOnly: true,
+    howto: 'Jede Runde gibt es eine Zielzahl. Du würfelst mit einem Zahlen-Würfel (1–10) und einem Reihen-Würfel (deine Reihen). Einen der beiden darfst du einmal neu werfen. Dann rechnest du dein Produkt aus – nur wenn es stimmt, zählt es. Wer näher an der Zielzahl ist, gewinnt die Runde. Wer zuerst 3 Runden gewinnt, gewinnt das Duell gegen Robo 🤖.' },
   { id: 'memory', name: 'Memory', desc: 'Finde so schnell wie möglich alle Paare.', color: 'pink', art: '<span class="emo">🃏</span>', modes: ['speed'],
     howto: 'Alle Karten liegen offen. Tippe eine Rechnung und dann ihr Ergebnis an – so schnell wie möglich. Ein falsches Paar kostet 3 Sekunden.' },
   { id: 'duel', name: 'Duell zu zweit', desc: 'Zwei Kinder, ein Tablet: Wer ist schneller?', color: 'coral', art: '<span class="emo">⚔️</span>', modes: [],
@@ -95,7 +101,7 @@ const RUN = { ms: 60000, goal: 20, lives: 3 };
 const HEART_SVG = '<svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.2 10.6 20C5.4 15.3 2 12.2 2 8.4 2 5.3 4.4 3 7.4 3c1.7 0 3.4.8 4.6 2.1C13.2 3.8 14.9 3 16.6 3 19.6 3 22 5.3 22 8.4c0 3.8-3.4 6.9-8.6 11.6z"/></svg>';
 const GAME_MODES = {
   countdown: { name: 'Countdown', icon: () => icon('clock'), short: '60 Sekunden',
-    desc: (id) => ({ runner: 'Lauf 60 Sekunden lang durch möglichst viele richtige Bögen. Hindernisse bremsen dich, kosten aber kein Leben.', maze: 'Möglichst viele richtige Schritte in 60 Sekunden. Falsche Felder halten dich nur auf.', tower: 'Bau in 60 Sekunden einen möglichst hohen Turm.', snake: 'Friss in 60 Sekunden möglichst viele richtige Zahlen.' }[id] || 'Möglichst viele richtige Antworten in 60 Sekunden. Extrazeit gibt es nicht.') },
+    desc: (id) => ({ runner: 'Lauf 60 Sekunden lang durch möglichst viele richtige Bögen. Hindernisse bremsen dich, kosten aber kein Leben.', maze: 'Möglichst viele richtige Schritte in 60 Sekunden. Falsche Felder halten dich nur auf.', tower: 'Bau in 60 Sekunden einen möglichst hohen Turm.', snake: 'Friss in 60 Sekunden möglichst viele richtige Zahlen.', castle: 'Wehre in 60 Sekunden möglichst viele Monster ab. Ein Monster, das die Burg erreicht, kostet nichts – bringt aber auch keinen Punkt.' }[id] || 'Möglichst viele richtige Antworten in 60 Sekunden. Extrazeit gibt es nicht.') },
   sudden: { name: 'Ein Leben', icon: () => HEART_SVG, short: 'bis zum 1. Fehler',
     desc: (id) => (id === 'snake' ? 'Werde so lang wie möglich! Jede richtige Zahl macht dich länger, falsche Zahlen kürzer. Beisst du dich selbst, ist das Spiel vorbei. Alle 5 richtigen wirst du schneller.'
       : 'Nur ein Leben: Lauf so weit du kannst. Beim ersten Hindernis, Absturz oder falscher Antwort ist es vorbei.') },
@@ -103,6 +109,7 @@ const GAME_MODES = {
     desc: (id) => id === 'runner' ? '3 Leben – lauf so weit wie möglich. Eine falsche Antwort, ein Hindernis oder ein Sturz in einen Abgrund kostet ein Leben. Jede richtige Antwort macht dich ein bisschen schneller.'
       : id === 'maze' ? '3 Leben – lauf so weit du kannst. Jedes falsche Tor kostet ein Leben.'
         : id === 'tower' ? '3 Leben – eine falsche Antwort oder ein Block, der danebenfällt, kostet eines. Je höher der Turm, desto schneller schwingt der Kran.'
+          : id === 'castle' ? '3 Leben – jedes Monster, das die Burg erreicht, kostet eines. Alle 5 abgewehrten Monster kommen mehr und schnellere.'
           : id === 'snake' ? '3 Leben – eine falsche Zahl oder ein Biss in den eigenen Schwanz kostet eines. Alle 5 richtigen wird die Schlange schneller.' : `3 Leben – halte so lange wie möglich durch. Jede falsche Antwort kostet ein Leben. Alle 5 richtigen kommt ein neues Level, und du hast 10 % weniger Zeit pro Rechnung.${id === 'meteor' ? ' Beim letzten Leben fliegt ab und zu ein Ufo vorbei: Triffst du es, gibt es ein Extraleben.' : ''}` },
   speed: { name: 'Speed', icon: () => icon('bolt'), short: '20 richtige',
     desc: (id) => (id === 'memory' ? 'Finde alle Paare so schnell wie möglich. Ein falsches Paar kostet 3 Sekunden.'
@@ -253,8 +260,8 @@ function runFinish(why) {
 /* ---------------- Ergebnis und Bestenliste ---------------- */
 // Sterne: [1, 2, 3 Sterne]; Speed in Sekunden (weniger ist besser)
 const STAR_LIMITS = {
-  countdown: { elfmeter: [6, 11, 16], meteor: [6, 11, 16], frog: [6, 11, 16], target: [6, 11, 16], truefalse: [12, 22, 32], runner: [4, 7, 10], maze: [8, 14, 20], tower: [4, 8, 12], snake: [5, 9, 14] },
-  survive: { elfmeter: [6, 12, 20], meteor: [6, 12, 20], frog: [6, 12, 20], target: [6, 12, 20], truefalse: [10, 20, 35], runner: [5, 10, 18], maze: [5, 10, 18], tower: [5, 10, 18], snake: [5, 10, 18] },
+  countdown: { elfmeter: [6, 11, 16], meteor: [6, 11, 16], frog: [6, 11, 16], target: [6, 11, 16], truefalse: [12, 22, 32], runner: [4, 7, 10], maze: [8, 14, 20], tower: [4, 8, 12], snake: [5, 9, 14], castle: [8, 14, 20] },
+  survive: { elfmeter: [6, 12, 20], meteor: [6, 12, 20], frog: [6, 12, 20], target: [6, 12, 20], truefalse: [10, 20, 35], runner: [5, 10, 18], maze: [5, 10, 18], tower: [5, 10, 18], snake: [5, 10, 18], castle: [8, 16, 26] },
   sudden: { runner: [3, 7, 12], snake: [5, 10, 18] },
   speed: { elfmeter: [140, 100, 75], meteor: [140, 100, 70], frog: [150, 110, 80], target: [150, 105, 80], truefalse: [90, 60, 40], memory: [80, 50, 32], puzzle: [150, 100, 65], maze: [150, 100, 70] },
 };
@@ -386,7 +393,7 @@ function renderGame() {
       <h1>${esc(g.name)}</h1>
       <p class="gate-how">${esc(g.howto)}</p>
       ${gateModesHTML(g.id)}
-      ${opPickHTML('game-op', 'gate-ops')}
+      ${g.mulOnly ? '<p class="gate-reihen-text muted small">Hier wird immer mal gerechnet (Spalte · Reihe).</p>' : opPickHTML('game-op', 'gate-ops')}
       <p class="gate-reihen-text muted small">${esc(gateReihenText())}</p>
       ${opts ? `<div class="gate-opts">${opts}</div>` : ''}
       ${(g.id === 'kart' || g.id === 'runner') && !webglOK() ? '<div class="gate-need"><p><b>Dieses Spiel braucht 3D-Grafik.</b><br>Auf diesem Gerät geht das leider nicht. Probier ein anderes Spiel!</p></div>'
@@ -400,7 +407,7 @@ function renderGame() {
     </div>
   </section>`;
 }
-const START_2D = { maze: () => startMaze(), tower: () => startTower(), snake: () => startSnake(), puzzle: () => startPuzzle(), elfmeter: () => startElfmeter(), meteor: () => startMeteor(), frog: () => startFrog(), target: () => startTarget(), memory: () => startMemory(), truefalse: () => startTrueFalse(), duel: () => startDuel(),
+const START_2D = { castle: () => startCastle(), ships: () => startShips(), dice: () => startDice(), maze: () => startMaze(), tower: () => startTower(), snake: () => startSnake(), puzzle: () => startPuzzle(), elfmeter: () => startElfmeter(), meteor: () => startMeteor(), frog: () => startFrog(), target: () => startTarget(), memory: () => startMemory(), truefalse: () => startTrueFalse(), duel: () => startDuel(),
   kart: () => { toast('Das Rennen konnte nicht starten. Probier es nochmals.', 'bad'); renderGame(); },
   runner: () => { toast('Der Welten-Lauf konnte nicht starten. Probier es nochmals.', 'bad'); renderGame(); } };
 const START_3D = { maze: async () => { if (typeof startMaze3D !== 'function') await w3Script('js/maze3d.js'); return startMaze3D(); }, elfmeter: () => startElfmeter3D(), meteor: () => startMeteor3D(), frog: () => startFrog3D(), kart: () => startKart3D(), runner: () => startRunner3D() };

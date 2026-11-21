@@ -80,6 +80,15 @@ const actions = {
   'tf-answer': (el) => tfAnswer(el.dataset.v === '1'),
   'mz-step': (el) => mzStep(+el.dataset.i),
   'tw-answer': (el) => twAnswer(el.dataset.v),
+  'sh-cell': (el) => shCell(+el.dataset.r, +el.dataset.c),
+  'sh-answer': (el) => shAnswer(el.dataset.v),
+  'sh-cancel': () => shCancel(),
+  'dc-roll': () => dcDoRoll(),
+  'dc-reroll': (el) => dcReroll(+el.dataset.i),
+  'dc-keep': () => { if (game.dc?.phase === 'decide') dcAsk(); },
+  'dc-answer': (el) => dcAnswer(el.dataset.v),
+  'dc-next': () => dcRound(),
+  'cs-key': (el) => csKey(el.dataset.k),
   'pz-big': (el) => { db.settings.pzBig = el.dataset.v === '1'; saveDB(); renderGame(); },
   'duel-tap': (el) => duelTap(el),
   'duel-goal': (el) => { db.settings.duelGoal = +el.dataset.v; saveDB(); renderGame(); },
@@ -100,7 +109,7 @@ if (typeof liveActions === 'object') Object.assign(actions, liveActions); // Liv
 
 
 /* Bei schnellen Spielen zählt schon das Antippen (pointerdown), sonst der Klick */
-const FAST = new Set(['lq-answer', 'bingo-mark', 'mz-step', 'tw-answer', 'meteor-hit', 'meteor-alien', 'elf-shoot', 'duel-tap', 'frog-jump', 'tf-answer', 'mem-flip', 'pad', 'ex-choice', 'g3-pick']);
+const FAST = new Set(['cs-key', 'sh-cell', 'sh-answer', 'dc-answer', 'lq-answer', 'bingo-mark', 'mz-step', 'tw-answer', 'meteor-hit', 'meteor-alien', 'elf-shoot', 'duel-tap', 'frog-jump', 'tf-answer', 'mem-flip', 'pad', 'ex-choice', 'g3-pick']);
 let lastFast = { el: null, t: 0 };
 document.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;

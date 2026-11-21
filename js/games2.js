@@ -7,7 +7,7 @@
 
 /** Wie die Punkte im Ergebnis heissen (sonst «richtige Antworten») */
 function g2Noun(id, n) {
-  const W = { maze: ['richtiges Tor', 'richtige Tore'], tower: ['Stockwerk', 'Stockwerke'], snake: ['richtige Zahl gefressen', 'richtige Zahlen gefressen'], puzzle: ['Teil', 'Teile'] }[id];
+  const W = { maze: ['richtiges Tor', 'richtige Tore'], tower: ['Stockwerk', 'Stockwerke'], snake: ['richtige Zahl gefressen', 'richtige Zahlen gefressen'], puzzle: ['Teil', 'Teile'], castle: ['Monster abgewehrt', 'Monster abgewehrt'] }[id];
   return W ? W[n === 1 ? 0 : 1] : null;
 }
 const g2Pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -773,15 +773,464 @@ function pzPlace(i, cell) {
     cell.classList.remove('miss'); void cell.offsetWidth; cell.classList.add('miss');
     setTimeout(() => cell.classList.remove('miss'), 450);
     // fürs Gedächtnis: diese Rechnung war gemeint, das Kind hat v hingesetzt
-    try { recordAnswer(makeTask(+cell.dataset.r, +cell.dataset.c, 'mul'), v, 6000); } catch { /* */ }
+    try { recordAnswer(makeTask(+cell.dataset.c, +cell.dataset.r, 'mul'), v, 6000); } catch { /* */ }
     runWrong();
     return;
   }
   pz.used.add(i);
   sfx.good();
-  try { recordAnswer(makeTask(+cell.dataset.r, +cell.dataset.c, 'mul'), v, 4000); } catch { /* */ }
+  try { recordAnswer(makeTask(+cell.dataset.c, +cell.dataset.r, 'mul'), v, 4000); } catch { /* */ }
   cell.textContent = v; cell.classList.add('filled');
   tile?.classList.add('placed');
   sparkle(cell, 8);
   runRight();
+}
+
+/* =========================================================
+   🚢 Schiffe versenken: Schüsse auf die Einmaleins-Tafel – nur wer das Feld richtig rechnet, darf schiessen
+   ========================================================= */
+const SH_FLEET = [4, 3, 3, 2, 2];
+function shRows() {
+  const ps = practiceSettings(), all = reihenFor(ps.big).filter((r) => r >= 2);
+  let rows = ps.reihen.filter((r) => r >= 2);
+  if (rows.length > 10) rows = shuffle(rows).slice(0, 10);
+  if (rows.length < 6) rows = [...rows, ...shuffle(all.filter((r) => !rows.includes(r))).slice(0, 8 - rows.length)];
+  return rows.sort((a, b) => a - b);
+}
+/** Flotte zufällig setzen (Schiffe berühren sich nicht) */
+function shPlace(R, C) {
+  for (let tries = 0; tries < 400; tries++) {
+    const cells = new Map(), ships = [];
+    let ok = true;
+    for (const len of SH_FLEET) {
+      let placed = false;
+      for (let k = 0; k < 200 && !placed; k++) {
+        const hor = Math.random() < 0.5, r0 = Math.floor(Math.random() * (hor ? R : R - len + 1)), c0 = Math.floor(Math.random() * (hor ? C - len + 1 : C));
+        const pts = Array.from({ length: len }, (_, i) => [r0 + (hor ? 0 : i), c0 + (hor ? i : 0)]);
+        if (pts.some(([r, c]) => [-1, 0, 1].some((dr) => [-1, 0, 1].some((dc) => cells.has(`${r + dr}:${c + dc}`))))) continue;
+        const ship = { pts, hits: 0, len, hor };
+        pts.forEach(([r, c]) => cells.set(`${r}:${c}`, ship));
+        ships.push(ship); placed = true;
+      }
+      if (!placed) { ok = false; break; }
+    }
+    if (ok) return { cells, ships, shots: new Map() };
+  }
+  return { cells: new Map(), ships: [], shots: new Map() };
+}
+function startShips() {
+  const rows = shRows(), R = rows.length, C = 10;
+  Object.assign(game, { sh: { rows, R, C, me: shPlace(R, C), cpu: shPlace(R, C), turn: 'me', busy: false, ask: null, shots: 0, ok: 0, wrong: 0, targets: [] }, over: false });
+  $('#view').innerHTML = gameShell('ships', `
+    <div class="sh-play">
+    <div class="sh-status" id="shstatus"></div>
+    <div class="sh-wrap">
+      <div class="sh-side enemy"><p class="label">Flotte des Computers 🤖 – tippe ein Feld an</p><div class="sh-board big" id="shcpu"></div><div class="sh-fleet" id="shcpufleet"></div></div>
+      <div class="sh-side mine"><p class="label">Deine Flotte</p><div class="sh-board" id="shme"></div><div class="sh-fleet" id="shmefleet"></div><div class="sh-ask" id="shask" hidden></div></div>
+    </div>
+    </div>
+    <p class="mode-hint">Tippe auf ein Feld der gegnerischen Tafel und rechne es aus (Spalte · Reihe). Richtig gerechnet → Schuss! Bei einem Treffer darfst du nochmals.</p>`);
+  shDraw();
+  shStatus('Du beginnst! Tippe ein Feld an.');
+}
+/** Schiff als zusammenhängende Form: Richtung, Heck (b-a) und Bug (b-z) */
+function shBoatCls(ship, r, c) {
+  const i = ship.pts.findIndex(([pr, pc]) => pr === r && pc === c);
+  return `b-${ship.hor ? 'h' : 'v'}${i === 0 ? ' b-a' : ''}${i === ship.len - 1 ? ' b-z' : ''}`;
+}
+function shBoardHTML(b, own) {
+  const s = game.sh;
+  let h = `<div class="sh-h corner">${SIGN()}</div>${Array.from({ length: s.C }, (_, c) => `<div class="sh-h">${c + 1}</div>`).join('')}`;
+  for (let r = 0; r < s.R; r++) {
+    h += `<div class="sh-h row">${s.rows[r]}</div>`;
+    for (let c = 0; c < s.C; c++) {
+      const k = `${r}:${c}`, shot = b.shots.get(k), ship = b.cells.get(k), sunk = ship && ship.hits >= ship.len;
+      const cls = ['sh-cell', shot === 'hit' ? 's-hit' : shot === 'miss' ? 's-miss' : '', (own || sunk) && ship ? `s-boat${sunk ? ' s-sunk' : ''} ${shBoatCls(ship, r, c)}` : ''].join(' ');
+      h += own ? `<div class="${cls}" data-k="${k}"></div>` : `<button type="button" class="${cls}" data-action="sh-cell" data-r="${r}" data-c="${c}" ${shot ? 'disabled' : ''} aria-label="${c + 1} mal ${s.rows[r]}"></button>`;
+    }
+  }
+  return h;
+}
+function shFleetHTML(b) { return b.ships.map((x) => `<span class="sh-mini ${x.hits >= x.len ? 'sunk' : ''}">${'■'.repeat(x.len)}</span>`).join(''); }
+function shDraw() {
+  const s = game.sh;
+  $('#shcpu').innerHTML = shBoardHTML(s.cpu, false);
+  $('#shme').innerHTML = shBoardHTML(s.me, true);
+  $('#shcpu').style.setProperty('--r', s.R); $('#shme').style.setProperty('--r', s.R);
+  $('#shcpufleet').innerHTML = shFleetHTML(s.cpu); $('#shmefleet').innerHTML = shFleetHTML(s.me);
+  $('#shcpu').classList.toggle('wait', s.turn !== 'me');
+}
+function shStatus(t, cls = '') { const el = $('#shstatus'); if (el) { el.className = `sh-status ${cls}`; el.innerHTML = t; } }
+function shCell(r, c) {
+  const s = game.sh;
+  if (!s || s.turn !== 'me' || s.busy || s.ask || game.over) return;
+  if (s.cpu.shots.has(`${r}:${c}`)) return;
+  const t = makeTask(c + 1, s.rows[r], 'mul'); // Spalte · Reihe (wie im Training: 3 · 7 gehört zur 7er-Reihe)
+  t.shownAt = performance.now();
+  s.ask = { r, c, t };
+  const vals = choicesFor(t, 4);
+  const box = $('#shask');
+  box.hidden = false;
+  // Handy hochkant: die Rechen-Karte liegt unten über dem Bildschirm – das gewählte Feld bleibt darüber sichtbar
+  $('.game-ships')?.classList.add('asking');
+  requestAnimationFrame(() => {
+    const cell = $(`#shcpu .sh-cell[data-r="${r}"][data-c="${c}"]`);
+    if (!cell || getComputedStyle(box).position !== 'fixed') return;
+    const over = cell.getBoundingClientRect().bottom - box.getBoundingClientRect().top + 14;
+    if (over > 0) window.scrollBy({ top: over, behavior: reduceMotion() ? 'auto' : 'smooth' });
+  });
+  box.innerHTML = `<div class="sh-ask-card"><p class="small muted">Spalte ${c + 1} · Reihe ${s.rows[r]}</p><div class="task">${taskHTML(t, '<span class="slot">?</span>')}</div>
+    <div class="sh-ans">${vals.map((v) => `<button type="button" class="sh-a" data-action="sh-answer" data-v="${v}">${v}</button>`).join('')}</div>
+    <button type="button" class="link-btn" data-action="sh-cancel">anderes Feld wählen</button></div>`;
+  $$('#shcpu .sh-cell').forEach((b) => b.classList.toggle('s-aim', +b.dataset.r === r && +b.dataset.c === c));
+}
+function shClose() {
+  const s = game.sh;
+  if (s) s.ask = null;
+  const box = $('#shask');
+  if (box) box.hidden = true;
+  $('.game-ships')?.classList.toggle('asking', false);
+}
+function shCancel() {
+  const s = game.sh;
+  if (!s || s.busy) return;
+  shClose();
+  $$('#shcpu .s-aim').forEach((b) => b.classList.toggle('s-aim', false));
+}
+function shAnswer(v) {
+  const s = game.sh;
+  if (!s?.ask || s.busy) return;
+  const { r, c, t } = s.ask;
+  const ok = Number(v) === t.answer;
+  recordAnswer(t, v, performance.now() - t.shownAt);
+  $$('#shask .sh-a').forEach((b) => { b.disabled = true; if (Number(b.dataset.v) === t.answer) b.classList.add('right'); else if (b.dataset.v === String(v)) b.classList.add('wrong'); });
+  s.busy = true;
+  if (!ok) {
+    s.wrong++;
+    sfx.bad();
+    shStatus(`Falsch gerechnet: ${esc(taskText(t, true))} – kein Schuss. Jetzt ist der Computer dran.`, 'bad');
+    gLater(() => { shClose(); s.busy = false; s.turn = 'cpu'; shDraw(); gLater(shCpu, 700); }, 1400);
+    return;
+  }
+  s.ok++; s.shots++;
+  gLater(() => {
+    shClose();
+    const res = shFire(s.cpu, r, c);
+    shDraw();
+    const el = $(`#shcpu .sh-cell[data-r="${r}"][data-c="${c}"]`);
+    if (res === 'miss') { tone([300, 200], 0.1, 'sine', 0.05); shStatus(`${esc(taskText(t, true))} – Wasser! 💧 Jetzt ist der Computer dran.`); s.turn = 'cpu'; s.busy = false; shDraw(); gLater(shCpu, 900); return; }
+    sfx.good(); sparkle(el, 10);
+    if (res === 'sunk') tone([523, 659, 784, 1047], 0.08, 'triangle', 0.07);
+    if (s.cpu.ships.every((x) => x.hits >= x.len)) { shEnd(true); return; }
+    shStatus(`${esc(taskText(t, true))} – ${res === 'sunk' ? '<b>Versenkt!</b> 🚢💥' : '<b>Treffer!</b> 💥'} Du darfst nochmals.`, 'good');
+    s.busy = false;
+  }, 500);
+}
+function shFire(b, r, c) {
+  const k = `${r}:${c}`, ship = b.cells.get(k);
+  if (!ship) { b.shots.set(k, 'miss'); return 'miss'; }
+  b.shots.set(k, 'hit'); ship.hits++;
+  if (ship.hits >= ship.len) {
+    // rund um ein versenktes Schiff kann nichts mehr sein
+    ship.pts.forEach(([pr, pc]) => [-1, 0, 1].forEach((dr) => [-1, 0, 1].forEach((dc) => { const kk = `${pr + dr}:${pc + dc}`; if (pr + dr >= 0 && pc + dc >= 0 && pr + dr < game.sh.R && pc + dc < game.sh.C && !b.shots.has(kk)) b.shots.set(kk, 'miss'); })));
+    return 'sunk';
+  }
+  return 'hit';
+}
+/** Computer: sucht zuerst rund um Treffer weiter, sonst zufällig im Schachbrettmuster */
+function shCpu() {
+  const s = game.sh;
+  if (!s || game.over || s.turn !== 'cpu') return;
+  const b = s.me, free = (r, c) => r >= 0 && c >= 0 && r < s.R && c < s.C && !b.shots.has(`${r}:${c}`);
+  const open = [...b.shots.entries()].filter(([k, v]) => v === 'hit' && (() => { const sh = b.cells.get(k); return sh.hits < sh.len; })()).map(([k]) => k.split(':').map(Number));
+  let pick = null;
+  if (open.length) {
+    const cand = [];
+    if (open.length >= 2) { // Richtung erkannt: in der Linie weiter
+      const hor = open[0][0] === open[1][0];
+      open.forEach(([r, c]) => (hor ? [[r, c - 1], [r, c + 1]] : [[r - 1, c], [r + 1, c]]).forEach(([a, d]) => { if (free(a, d)) cand.push([a, d]); }));
+    }
+    if (!cand.length) open.forEach(([r, c]) => [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]].forEach(([a, d]) => { if (free(a, d)) cand.push([a, d]); }));
+    pick = cand.length ? g2Pick(cand) : null;
+  }
+  if (!pick) {
+    const all = [];
+    for (let r = 0; r < s.R; r++) for (let c = 0; c < s.C; c++) if (free(r, c) && (r + c) % 2 === 0) all.push([r, c]);
+    if (!all.length) for (let r = 0; r < s.R; r++) for (let c = 0; c < s.C; c++) if (free(r, c)) all.push([r, c]);
+    pick = g2Pick(all);
+  }
+  if (!pick) { s.turn = 'me'; return; }
+  const [r, c] = pick, res = shFire(b, r, c);
+  shDraw();
+  const el = $(`#shme .sh-cell[data-k="${r}:${c}"]`);
+  el?.classList.add('s-flash');
+  const t = `${c + 1} ${SIGN()} ${s.rows[r]} = ${s.rows[r] * (c + 1)}`;
+  if (res === 'miss') { shStatus(`Der Computer schiesst auf ${t} – Wasser. <b>Du bist dran!</b>`); s.turn = 'me'; shDraw(); return; }
+  sfx.bad();
+  if (s.me.ships.every((x) => x.hits >= x.len)) { shEnd(false); return; }
+  shStatus(`Der Computer trifft bei ${t}${res === 'sunk' ? ' und versenkt ein Schiff!' : '!'} Er schiesst nochmals …`, 'bad');
+  gLater(shCpu, 1000);
+}
+function shEnd(win) {
+  const s = game.sh;
+  game.over = true;
+  const acc = s.ok + s.wrong ? Math.round((s.ok / (s.ok + s.wrong)) * 100) : 0;
+  const st = !win ? (acc >= 90 ? 1 : 0) : acc >= 95 ? 3 : acc >= 80 ? 2 : 1;
+  if (win) { sfx.win(); confetti(); }
+  gLater(() => {
+    if (ui.view !== 'game') return;
+    $('#view').innerHTML = gameShell('ships', gameResultHTML({ st, title: win ? 'Gewonnen – alle Schiffe versenkt! 🚢' : 'Der Computer war schneller 🤖',
+      line: `${s.ok} richtig gerechnet, ${s.wrong} falsch (${acc} %) · ${s.shots} Schüsse` }));
+  }, win ? 1200 : 1600);
+}
+
+/* =========================================================
+   🎲 Würfel-Duell gegen den Rechen-Roboter: wer kommt näher an die Zielzahl?
+   Reihen-Würfel (die gewählten Reihen) und Zahlen-Würfel (1–10); einmal pro Runde darf man einen Würfel neu werfen.
+   Das Produkt zählt nur, wenn man es richtig ausrechnet. Wer zuerst 3 Runden gewinnt, gewinnt.
+   ========================================================= */
+const DC_WIN = 3;
+function startDice() {
+  const rows = practiceSettings().reihen.slice();
+  Object.assign(game, { dc: { rows, pts: [0, 0], round: 0, phase: 'roll', me: null, cpu: null, rerolled: false, target: 0, ok: 0, wrong: 0, t: null }, over: false });
+  $('#view').innerHTML = gameShell('dice', `
+    <div class="dc-play">
+    <div class="dc-score"><span class="dc-p me">Du <b id="dcme">0</b></span><span class="dc-vs">bis ${DC_WIN}</span><span class="dc-p cpu"><b id="dccpu">0</b> Robo 🤖</span></div>
+    <div class="dc-target"><small>Zielzahl</small><b id="dctarget">?</b></div>
+    <div class="dc-table">
+      <div class="dc-side me"><p class="label">Deine Würfel</p><div class="dc-dice" id="dcmine"></div><div class="dc-res" id="dcmeres"></div></div>
+      <div class="dc-side cpu"><p class="label">Robo 🤖</p><div class="dc-dice" id="dccpud"></div><div class="dc-res" id="dccpures"></div></div>
+    </div>
+    <div class="dc-ctrl" id="dcctrl"></div>
+    </div>
+    <p class="mode-hint">Würfle, dann entscheide: behalten oder einen Würfel nochmals werfen (tippe ihn an). Rechne dein Produkt richtig aus – wer näher an der Zielzahl ist, gewinnt die Runde.</p>`);
+  dcRound();
+}
+const dcFace = (v, cls = '') => `<span class="dc-die ${cls}">${v}</span>`;
+const dcOff = (v) => { const n = Math.abs(v - game.dc.target); return n === 0 ? 'genau getroffen! 🎯' : `${n} weg vom Ziel`; };
+function dcRound() {
+  const d = game.dc;
+  d.round++; d.phase = 'roll'; d.me = null; d.cpu = null; d.rerolled = false; d.t = null;
+  // Zielzahl: ein mögliches Produkt in der Mitte des Bereichs
+  const r = g2Pick(d.rows), k = 2 + Math.floor(Math.random() * 8);
+  d.target = r * k + g2Pick([-2, -1, 0, 1, 2, 3]);
+  d.target = Math.max(4, d.target);
+  $('#dctarget').textContent = d.target;
+  $('#dctarget').parentNode.classList.remove('pop'); void $('#dctarget').offsetWidth; $('#dctarget').parentNode.classList.add('pop');
+  $('#dcmine').innerHTML = dcFace('?', 'idle') + dcFace('?', 'idle');
+  $('#dccpud').innerHTML = dcFace('?', 'idle') + dcFace('?', 'idle');
+  $('#dcmeres').innerHTML = ''; $('#dccpures').innerHTML = '';
+  $('#dcctrl').innerHTML = `<p class="dc-msg">Runde ${d.round}: Wer kommt näher an <b>${d.target}</b>?</p><button type="button" class="btn primary big" data-action="dc-roll">🎲 Würfeln</button>`;
+}
+const dcRoll = () => [1 + Math.floor(Math.random() * 10), g2Pick(game.dc.rows)]; // [Zahlen-Würfel, Reihen-Würfel]
+function dcShow(el, dice, roll = true, pick = false) {
+  $(el).innerHTML = dice.map((v, i) => `<button type="button" class="dc-die ${roll ? 'roll' : ''} ${i ? 'row' : 'num'}" data-k="${i ? 'Reihe' : '1–10'}" ${pick ? `data-action="dc-reroll" data-i="${i}"` : 'disabled'} style="animation-delay:${i * 90}ms">${v}</button>`).join('');
+}
+function dcDoRoll() {
+  const d = game.dc;
+  if (d.phase !== 'roll') return;
+  d.me = dcRoll(); d.phase = 'decide';
+  tone([440, 520, 620], 0.05, 'square', 0.03);
+  dcShow('#dcmine', d.me, true, true);
+  $('#dcctrl').innerHTML = `<p class="dc-msg">Zielzahl <b>${d.target}</b>. Behalten – oder tippe einen Würfel an, um ihn <b>einmal</b> neu zu werfen.</p><button type="button" class="btn primary big" data-action="dc-keep">✓ Behalten</button>`;
+}
+function dcReroll(i) {
+  const d = game.dc;
+  if (d.phase !== 'decide' || d.rerolled) return;
+  d.rerolled = true;
+  d.me[i] = i === 1 ? g2Pick(d.rows) : 1 + Math.floor(Math.random() * 10);
+  tone([520, 620], 0.05, 'square', 0.03);
+  dcShow('#dcmine', d.me, false, false);
+  $$('#dcmine .dc-die')[i]?.classList.add('roll');
+  dcAsk();
+}
+function dcAsk() {
+  const d = game.dc;
+  d.phase = 'calc';
+  const t = makeTask(d.me[0], d.me[1], 'mul');
+  t.shownAt = performance.now(); d.t = t;
+  dcShow('#dcmine', d.me, false, false);
+  const vals = choicesFor(t, 4);
+  $('#dcctrl').innerHTML = `<p class="dc-msg">Wie viel ist das?</p><div class="task">${taskHTML(t, '<span class="slot">?</span>')}</div><div class="dc-ans">${vals.map((v) => `<button type="button" class="dc-a" data-action="dc-answer" data-v="${v}">${v}</button>`).join('')}</div>`;
+}
+function dcAnswer(v) {
+  const d = game.dc;
+  if (d.phase !== 'calc') return;
+  d.phase = 'cpu';
+  const t = d.t, ok = Number(v) === t.answer;
+  recordAnswer(t, v, performance.now() - t.shownAt);
+  $$('.dc-a').forEach((b) => { b.disabled = true; if (Number(b.dataset.v) === t.answer) b.classList.add('right'); else if (b.dataset.v === String(v)) b.classList.add('wrong'); });
+  if (ok) { d.ok++; sfx.good(); } else { d.wrong++; sfx.bad(); }
+  d.myVal = ok ? t.answer : null;
+  $('#dcmeres').innerHTML = ok ? `<b>${t.answer}</b><small>${t.a} ${SIGN()} ${t.b}</small><small>${dcOff(t.answer)}</small>` : `<b class="bust">✗</b><small>falsch gerechnet</small><small>${esc(taskText(t, true))} – zählt nicht</small>`;
+  gLater(dcCpu, 1100);
+}
+/** Robo: würfelt; ist er weit weg, wirft er den Würfel neu, der am meisten hilft */
+function dcCpu() {
+  const d = game.dc;
+  let c = dcRoll();
+  dcShow('#dccpud', c, true, false);
+  $('#dcctrl').innerHTML = '<p class="dc-msg">Robo würfelt …</p>';
+  gLater(() => {
+    const dist = (a, b) => Math.abs(a * b - d.target);
+    if (dist(c[0], c[1]) > 6) {
+      const exp0 = Array.from({ length: 10 }, (_, i) => dist(i + 1, c[1])).reduce((s, x) => s + x, 0) / 10, exp1 = d.rows.reduce((s, r) => s + dist(c[0], r), 0) / d.rows.length;
+      const cur = dist(c[0], c[1]);
+      if (Math.min(exp0, exp1) < cur) {
+        const i = exp0 < exp1 ? 0 : 1;
+        c = [...c]; c[i] = i === 1 ? g2Pick(d.rows) : 1 + Math.floor(Math.random() * 10);
+        dcShow('#dccpud', c, false, false); $$('#dccpud .dc-die')[i]?.classList.add('roll');
+        $('#dcctrl').innerHTML = '<p class="dc-msg">Robo wirft einen Würfel neu …</p>';
+      }
+    }
+    gLater(() => {
+      const cv = c[0] * c[1];
+      d.cpu = c; d.cpuVal = cv;
+      $('#dccpures').innerHTML = `<b>${cv}</b><small>${c[0]} ${SIGN()} ${c[1]}</small><small>${dcOff(cv)}</small>`;
+      dcJudge();
+    }, 900);
+  }, 1000);
+}
+function dcJudge() {
+  const d = game.dc;
+  const me = d.myVal == null ? Infinity : Math.abs(d.myVal - d.target), cpu = Math.abs(d.cpuVal - d.target);
+  let msg;
+  if (me < cpu) { d.pts[0]++; msg = '<b>Du gewinnst die Runde!</b> 🎉'; tone([660, 880, 1175], 0.07, 'triangle', 0.07); }
+  else if (cpu < me) { d.pts[1]++; msg = 'Robo gewinnt die Runde.'; tone([330, 247], 0.1, 'sawtooth', 0.04); }
+  else msg = 'Gleich nah – unentschieden!';
+  $('#dcme').textContent = d.pts[0]; $('#dccpu').textContent = d.pts[1];
+  if (d.pts[0] >= DC_WIN || d.pts[1] >= DC_WIN) { $('#dcctrl').innerHTML = `<p class="dc-msg">${msg}</p>`; gLater(dcEnd, 1400); return; }
+  $('#dcctrl').innerHTML = `<p class="dc-msg">${msg}</p><button type="button" class="btn primary big" data-action="dc-next">Nächste Runde ${icon('right')}</button>`;
+}
+function dcEnd() {
+  const d = game.dc, win = d.pts[0] > d.pts[1];
+  game.over = true;
+  if (win) { sfx.win(); confetti(); }
+  const acc = d.ok + d.wrong ? Math.round((d.ok / (d.ok + d.wrong)) * 100) : 0;
+  $('#view').innerHTML = gameShell('dice', gameResultHTML({ st: win ? (acc === 100 ? 3 : 2) : acc === 100 ? 1 : 0, title: win ? `Gewonnen ${d.pts[0]} : ${d.pts[1]}! 🎲` : `Robo gewinnt ${d.pts[1]} : ${d.pts[0]} 🤖`,
+    line: `${d.ok} von ${d.ok + d.wrong} Produkten richtig gerechnet` }));
+}
+
+/* =========================================================
+   🏰 Burg verteidigen: Monster mit Rechnungen laufen auf die Burg zu. Ergebnis eintippen → die Kanone trifft.
+   ========================================================= */
+const CS_LANE = (l) => 38 + l * 23; // Höhe der drei Wege (in % der Bühne, Füsse der Monster)
+const CS_EMPTY = '<small>Ergebnis tippen</small>';
+const CS_MON = ['👾', '👹', '🐲', '👻', '🦇', '🐙', '🦖', '🧌'];
+function startCastle() {
+  Object.assign(game, { picker: gamePicker(), cs: { mons: [], typed: '', spawnT: 0.8, last: 0, id: 0, shots: [] }, over: false });
+  runStart('castle');
+  $('#view').innerHTML = gameShell('castle', `
+    ${runHudHTML('bar-hud')}
+    <div class="cs-play">
+    <div class="cs-stage" id="csstage">
+      <span class="cs-moon" aria-hidden="true"></span>
+      ${[0, 1, 2].map((l) => `<span class="cs-lane" style="top:${CS_LANE(l)}%"></span>`).join('')}
+      <div class="cs-castle" aria-hidden="true"><div class="cs-wall"></div><div class="cs-tower"><span class="cs-flag">🚩</span></div><div class="cs-tower t2"></div><span class="cs-cannon" id="cscannon"><i></i></span></div>
+    </div>
+    <div class="cs-input"><span class="cs-typed" id="cstyped">${CS_EMPTY}</span>
+      <div class="cs-pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button type="button" class="cs-key" data-action="cs-key" data-k="${n}">${n}</button>`).join('')}<button type="button" class="cs-key back" data-action="cs-key" data-k="back">⌫</button><button type="button" class="cs-key" data-action="cs-key" data-k="0">0</button><button type="button" class="cs-key ok" data-action="cs-key" data-k="ok">✓</button></div></div>
+    </div>
+    <p class="mode-hint">Tippe das Ergebnis eines Monsters ein (Zahlentasten oder Tastatur) – die Kanone feuert, sobald es passt. Erreicht ein Monster die Burg, ${game.run.mode === 'survive' ? 'kostet das ein Leben' : 'ist es weg'}.</p>`);
+  setGameKeys((e) => {
+    if (/^[0-9]$/.test(e.key)) { e.preventDefault(); csKey(e.key); }
+    else if (e.key === 'Backspace') { e.preventDefault(); csKey('back'); }
+    else if (e.key === 'Enter') { e.preventDefault(); csKey('ok'); }
+  });
+  const loop = (now) => {
+    const c = game.cs;
+    if (!c || !$('#csstage')) return;
+    game.raf = requestAnimationFrame(loop);
+    const dt = Math.max(0, Math.min(0.05, (now - (c.last || now)) / 1000)); c.last = now;
+    if (runOn()) csStep(dt);
+  };
+  game.raf = requestAnimationFrame(loop);
+}
+function csStep(dt) {
+  const c = game.cs, lv = surviveLevel();
+  c.spawnT -= dt;
+  const maxOn = Math.min(5, 2 + Math.floor(lv / 2));
+  if (c.spawnT <= 0 && c.mons.length < maxOn) { csSpawn(); c.spawnT = Math.max(1.4, 3.6 - lv * 0.25) * (0.8 + Math.random() * 0.4); }
+  const st = $('#csstage');
+  for (const m of [...c.mons]) {
+    m.x -= m.v * dt;
+    m.el.style.left = `${m.x}%`;
+    if (m.x <= 14) { // an der Burg
+      csRemove(m);
+      st?.classList.remove('hit'); void st?.offsetWidth; st?.classList.add('hit');
+      sfx.bad();
+      recordAnswer(m.t, '', 20000);
+      if (runWrong(m.t)) return;
+    }
+  }
+}
+function csSpawn() {
+  const c = game.cs, st = $('#csstage');
+  if (!st) return;
+  // nie zwei Monster mit demselben Ergebnis gleichzeitig
+  const busy = new Set(c.mons.map((m) => m.t.answer));
+  const t = game.picker.pool.some((x) => !busy.has(x.answer)) ? game.picker.next((x) => !busy.has(x.answer)) : game.picker.next();
+  const lane = [0, 1, 2].sort(() => Math.random() - 0.5).find((l) => !c.mons.some((m) => m.lane === l && m.x > 70)) ?? Math.floor(Math.random() * 3);
+  const lv = surviveLevel();
+  const m = { id: ++c.id, t, lane, x: 100, v: (5.2 + lv * 0.55) * (0.85 + Math.random() * 0.3), el: document.createElement('div') };
+  m.el.className = 'cs-mon';
+  m.el.style.top = `${CS_LANE(lane)}%`;
+  m.el.style.zIndex = 3 + lane;
+  m.el.innerHTML = `<span class="cs-sign">${taskHTML(t, '<span class="slot">?</span>')}</span><span class="cs-body">${g2Pick(CS_MON)}</span>`;
+  st.appendChild(m.el);
+  // ganz im Bild starten (das Schild ist breiter als das Monster)
+  m.x = Math.min(100, 99 - (m.el.offsetWidth / Math.max(1, st.clientWidth)) * 50);
+  m.el.style.left = `${m.x}%`;
+  c.mons.push(m);
+}
+function csRemove(m) { const c = game.cs; c.mons = c.mons.filter((x) => x !== m); m.el.classList.add('gone'); setTimeout(() => m.el.remove(), 400); }
+function csKey(k) {
+  const c = game.cs;
+  if (!c || !runOn()) return;
+  if (k === 'back') c.typed = c.typed.slice(0, -1);
+  else if (k === 'ok') { if (c.typed) csTry(true); return; }
+  else if (c.typed.length < 3) c.typed += k;
+  $('#cstyped').innerHTML = c.typed || CS_EMPTY;
+  csTry(false);
+}
+/** Passt die Eingabe zu einem Monster? Dann feuert die Kanone sofort. */
+function csTry(force) {
+  const c = game.cs, v = Number(c.typed);
+  if (!c.typed) return;
+  const hit = c.mons.filter((m) => m.t.answer === v).sort((a, b) => a.x - b.x)[0];
+  if (hit) {
+    recordAnswer(hit.t, v, performance.now() - hit.t.shownAt);
+    csShoot(hit);
+    c.typed = ''; $('#cstyped').innerHTML = CS_EMPTY;
+    sfx.good();
+    runRight();
+    return;
+  }
+  // passt zu keinem Monster (mehr)? Dann ist die Eingabe falsch – sie wird gelöscht (kostet nichts)
+  if (force || !c.mons.some((m) => String(m.t.answer).startsWith(c.typed))) {
+    const el = $('#cstyped'); el.classList.remove('bad'); void el.offsetWidth; el.classList.add('bad');
+    tone([200], 0.08, 'square', 0.04);
+    c.typed = ''; c.miss = (c.miss || 0) + 1;
+    gLater(() => { if ($('#cstyped') && !game.cs.typed) $('#cstyped').innerHTML = CS_EMPTY; }, 350);
+  }
+}
+function csShoot(m) {
+  const st = $('#csstage'), cn = $('#cscannon');
+  if (!st) return;
+  const ball = document.createElement('span');
+  ball.className = 'cs-ball';
+  const r = st.getBoundingClientRect(), mr = m.el.getBoundingClientRect(), cr = cn.getBoundingClientRect();
+  const x0 = cr.left - r.left + cr.width / 2, y0 = cr.top - r.top + cr.height / 2, x1 = mr.left - r.left + mr.width / 2, y1 = mr.top - r.top + mr.height * 0.7;
+  ball.style.left = `${x0}px`; ball.style.top = `${y0}px`;
+  cn.style.setProperty('--aim', `${Math.atan2(y1 - y0, x1 - x0)}rad`);
+  cn.classList.toggle('fire', false); void cn.offsetWidth; cn.classList.add('fire');
+  st.appendChild(ball);
+  ball.animate([{ transform: 'translate(-50%, -50%)' }, { transform: `translate(calc(-50% + ${(x1 - x0) / 2}px), calc(-50% + ${(y1 - y0) / 2 - 50}px))` }, { transform: `translate(calc(-50% + ${x1 - x0}px), calc(-50% + ${y1 - y0}px))` }], { duration: 260, easing: 'ease-in' }).finished.then(() => {
+    ball.remove();
+    m.el.classList.add('boom');
+    sparkle(m.el, 12);
+  });
+  game.cs.mons = game.cs.mons.filter((x) => x !== m);
+  m.v = 0;
+  setTimeout(() => m.el.remove(), 700);
 }

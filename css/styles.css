@@ -399,6 +399,14 @@ button.tf:hover { transform: scale(1.12); z-index: 1; box-shadow: var(--shadow-s
 .mode { display: grid; gap: 14px; }
 .mode-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .8rem 1.2rem; }
 .mode-title { font-size: clamp(1.8rem, 4.4vw, 2.5rem); }
+/* Spiele auf dem Handy: kleiner Titel (hochkant), quer gar keiner – der Platz gehört dem Spiel */
+@media (max-width: 560px) { .game:not(.gate) .mode-title { font-size: 1.35rem; } .game:not(.gate) { gap: 10px; } .view:has(> .game:not(.gate)) { padding-top: 12px; padding-bottom: 28px; } }
+@media (max-height: 560px) and (orientation: landscape) {
+  .game:not(.gate) > .mode-bar { display: none; } .game:not(.gate) { gap: 8px; }
+  .view:has(> .game:not(.gate)) { padding-top: 8px; padding-bottom: 12px; }
+  .topbar-inner { min-height: 54px; }
+  .run-hud.bar-hud { padding: .3rem .9rem; }
+}
 .mode-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; }
 .progress { height: 10px; border-radius: 99px; background: var(--sunken-2); overflow: hidden; }
 .progress-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--c, var(--brand)), var(--brand-2)); transition: width .35s ease; min-width: 10px; }
