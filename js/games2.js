@@ -11,6 +11,26 @@ function g2Noun(id, n) {
   return W ? W[n === 1 ? 0 : 1] : null;
 }
 const g2Pick = (a) => a[Math.floor(Math.random() * a.length)];
+/** Joystick auf dem Bildschirm (für Labyrinth und Rennen): meldet x, y zwischen -1 und 1 */
+function g2Joystick(el, onChange) {
+  if (!el) return null;
+  const knob = el.querySelector('i');
+  let id = null, cx = 0, cy = 0;
+  const R = () => el.clientWidth / 2;
+  const set = (x, y) => {
+    const r = R(), d = Math.hypot(x, y), k = d > r ? r / d : 1;
+    const px = x * k, py = y * k;
+    knob.style.transform = `translate(${px}px, ${py}px)`;
+    onChange(px / r, py / r);
+  };
+  const down = (e) => { e.stopPropagation(); id = e.pointerId; el.setPointerCapture(id); const b = el.getBoundingClientRect(); cx = b.left + b.width / 2; cy = b.top + b.height / 2; el.classList.add('on'); set(e.clientX - cx, e.clientY - cy); e.preventDefault(); };
+  const move = (e) => { if (e.pointerId !== id) return; set(e.clientX - cx, e.clientY - cy); };
+  const up = (e) => { if (e.pointerId !== id) return; id = null; el.classList.remove('on'); knob.style.transform = ''; onChange(0, 0); };
+  el.addEventListener('pointerdown', down); el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+  el.style.touchAction = 'none';
+  return { dispose() { el.removeEventListener('pointerdown', down); el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); } };
+}
+
 /** Reihen fürs Labyrinth und die Tafel (die 1er-Reihe wäre zu einfach: alles gehört dazu) */
 function g2Rows() { const rs = practiceSettings().reihen.filter((r) => r > 1); return rs.length ? rs : [2]; }
 

@@ -269,3 +269,7 @@
 .g2-joy.on i { transition: none; }
 @media (hover: hover) and (pointer: fine) { .g2-joy { opacity: .7; } }
 @media (max-width: 600px) { .mz3 { height: min(72vh, 640px); border-radius: 16px; } .mz3-ask { top: 56px; } .g2-joy { width: 118px; height: 118px; } }
+
+/* Turbo-Rennen: Joystick statt der Lenk-Anzeigen links/rechts (Tippen auf die Bildhälften geht weiterhin) */
+.kart-joy { left: 16px; bottom: 16px; }
+.kart-joy ~ .kart-pad, .kart-pad:has(~ .kart-joy) { display: none; }

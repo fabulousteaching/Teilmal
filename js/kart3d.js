@@ -744,10 +744,11 @@ async function startKart3D() {
       <div class="kart-mt" id="kmt" aria-hidden="true"><b>🔥</b><span id="kmttxt">Kurven-Turbo</span><i><i id="kmtbar"></i><u></u><u></u></i></div>
       <div class="kart-start-hint" id="kstarthint" hidden>Tippe genau bei <b>LOS!</b> – Raketenstart!</div>
       <div class="kart-pad l" id="kpl" aria-hidden="true">◀</div><div class="kart-pad r" id="kpr" aria-hidden="true">▶</div>
+      <div class="g2-joy kart-joy" id="kjoy" aria-label="Joystick zum Lenken"><i></i></div>
       <div class="kart-lights" id="klights" aria-hidden="true"><i></i><i></i><i></i></div>
       <div class="kart-count" id="kcount"></div>
     </div>
-    <p class="mode-hint">Lenken: Pfeiltasten ← → (oder A/D) – auf dem Tablet links oder rechts aufs Bild tippen und halten. Tipps: Innen durch die Kurve lädt den Kurven-Turbo (Bande nicht berühren!). Jede 4. richtige Antwort gibt Turbo. Genau bei LOS! tippen = Raketenstart.</p>`);
+    <p class="mode-hint">Lenken: Pfeiltasten ← → (oder A/D), Joystick unten links oder links/rechts aufs Bild tippen und halten. Tipps: Innen durch die Kurve lädt den Kurven-Turbo (Bande nicht berühren!). Jede 4. richtige Antwort gibt Turbo. Genau bei LOS! tippen = Raketenstart.</p>`);
   const host = $('#g3');
   const st = createStage(host, { fov: 62, near: 0.9, far: 3600, shadows: true, clear: TH.fog });
   game.stage3d = st;
@@ -1518,10 +1519,13 @@ async function startKart3D() {
   /* Steuerung: Tasten und Tippen/Halten links oder rechts */
   const input = { left: false, right: false, ptr: new Map() };
   const steerOf = () => {
-    let s = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+    let s = (input.right ? 1 : 0) - (input.left ? 1 : 0) + input.joy;
     for (const x of input.ptr.values()) s += x;
     return clamp(s, -1, 1);
   };
+  // Joystick (stufenlos lenken, vor allem auf Handy und Tablet)
+  input.joy = 0;
+  const joyCtl = typeof g2Joystick === 'function' ? g2Joystick($('#kjoy'), (x) => { input.joy = Math.abs(x) < 0.12 ? 0 : x * 1.15; if (x) startTap(); }) : null;
   const onKey = (e, down) => {
     const k = e.key;
     if (['ArrowLeft', 'a', 'A'].includes(k)) { input.left = down; e.preventDefault(); }
@@ -1555,7 +1559,7 @@ async function startKart3D() {
     try { engine.g.gain.cancelScheduledValues(audioCtx.currentTime); engine.g.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.08); const e = engine; setTimeout(() => { try { e.o.stop(); e.o2.stop(); } catch { /* */ } }, 400); } catch { /* */ }
     engine = null;
   }
-  game.cleanups.push(() => { document.removeEventListener('keydown', kd); document.removeEventListener('keyup', ku); stopEngine(); });
+  game.cleanups.push(() => { document.removeEventListener('keydown', kd); document.removeEventListener('keyup', ku); stopEngine(); joyCtl?.dispose(); });
 
   /* Anzeige */
   const elPlace = $('#kplace'), elLap = $('#klap'), elRank = $('#krank'), elTime = $('#ktime'), elAsk = $('#kask'), elTask = $('#ktask'), elAns = $('#kans'), elHint = $('#kaskhint'), elLines = $('#klines'), elCount = $('#kcount'), elLights = $('#klights');
