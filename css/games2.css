@@ -653,3 +653,13 @@ button.dc-die[data-action]:hover { transform: translateY(-3px); }
 .dc-line text { font-family: var(--font-display); }
 @media (max-width: 420px) { .d3 { --s: 58px; } .dc-dice { gap: 12px; min-height: 88px; } }
 @media (max-height: 560px) and (orientation: landscape) { .d3 { --s: 46px; } .d3-cube span { border-radius: 12px; } .dc-dice { gap: 10px; min-height: 70px; } .d3 small { margin-top: 6px; } .dc-line { width: min(100%, 300px); } }
+
+/* Labyrinth: Zeitbalken an den Toren, Meldungen (Fallen, Belohnungen) */
+.mz3-clock { width: 100%; height: 7px; margin-top: 5px; border-radius: 99px; background: rgba(255, 255, 255, .22); overflow: hidden; }
+.mz3-clock i { display: block; height: 100%; transform-origin: left; background: #22c55e; }
+.mz3-pop { position: absolute; left: 50%; top: 42%; z-index: 6; transform: translate(-50%, -50%); padding: 6px 18px; border-radius: 99px; opacity: 0; pointer-events: none; white-space: nowrap;
+  background: rgba(15, 23, 42, .82); color: #fff; font: 800 clamp(1.1rem, 4vw, 1.6rem) var(--font-display); }
+.mz3-pop.good { background: linear-gradient(135deg, #22c55e, #15803d); }
+.mz3-pop.bad { background: linear-gradient(135deg, #ef4444, #991b1b); }
+.mz3-pop.on { animation: mz3-pop 1.2s ease forwards; }
+@keyframes mz3-pop { 12% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); } 25% { transform: translate(-50%, -50%) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -120%); } }

@@ -23,10 +23,8 @@ const GAMES = [
     howto: 'Drei Runden gegen fünf Computer-Fahrer. Wo sich die Strecke teilt, fährst du durch einen ?-Würfel – dann erscheint eine Rechnung. Etwas weiter vorne kommen drei Tore mit Ergebnissen: Fahr durchs richtige! Jede richtige Antwort füllt ein Feld, bei der 4. gibt es Turbo. Ein falsches Tor bremst dich kurz. Tipps: Innen durch die Kurve lädt einen Kurven-Turbo auf, und wer genau bei «LOS!» tippt, hat einen Raketenstart.' },
   { id: 'runner', name: 'Welten-Lauf', desc: 'Renn mit deinem Avatar durch fünf Welten!', color: 'teal', art: '<span class="emo">🏃</span>', three: true, modes: ['survive', 'sudden'],
     howto: 'Du rennst mit deinem Avatar auf drei Spuren. Wisch nach links oder rechts (oder Pfeiltasten), um die Spur zu wechseln, und nach oben zum Springen. Spring über Hürden, auf Blöcke und über Abgründe – wer hineinfällt, verliert ein Leben. Immer wieder kommt eine Rechnung, und über den Spuren schweben Blasen mit Ergebnissen: Lauf unter der richtigen durch! Jede richtige Antwort macht dich ein bisschen schneller. Mit der Zeit kommt Neues dazu: Löcher, hohe Wände (zweimal nach oben wischen = Doppelsprung), rollende Fässer, eine schmale Strasse und Kurven (rechtzeitig nach links oder rechts wischen). Auf nur einer Spur schweben die Ergebnisse übereinander: oben = springen, Mitte = weiterlaufen, unten = nach unten wischen (rutschen). Wie früh die schwierigeren Hindernisse kommen, hängt davon ab, wie sicher du im Training rechnest.' },
-  { id: 'maze', name: 'Rechen-Labyrinth', desc: 'Lauf mit deinem Avatar durch den riesigen Heckengarten – durchs richtige Tor!', color: 'purple', art: '<span class="emo">🧭</span>', three: true, modes: ['speed', 'survive'],
-    howto: 'Du läufst mit deinem Avatar durch einen riesigen Heckengarten – die Kamera ist direkt hinter dir. An jeder Kreuzung erscheint eine Rechnung, und drei magische Tore warten, über jedem ein Ergebnis. Hinter jedem Tor geht ein Gang weiter, aber nur das richtige führt zum Schatz. Ein falsches Tor wirft dich zurück und wächst zu. Es gibt auch Sackgassen – die Karte oben rechts zeigt, wo du schon warst. Steuern: Pfeiltasten (↑ gehen, ← → drehen) oder der Joystick.'},
-  { id: 'tower', name: 'Turmbau', desc: 'Richtig gerechnet? Dann kommt ein Block – bau den höchsten Turm!', color: 'sun', art: '<span class="emo">🏗️</span>', three: true, modes: ['countdown', 'survive'],
-    howto: 'Rechne die Aufgabe und tippe das richtige Ergebnis an. Dann hängt ein Block am Kran und schwingt hin und her. Tippe im richtigen Moment ins Bild – der Block fällt auf den Turm. Was übersteht, bricht ab, und der nächste Block wird schmaler. Triffst du genau, gibt es «Perfekt!» und der Block wird wieder etwas breiter.' },
+  { id: 'maze', name: 'Rechen-Labyrinth', desc: 'Lauf mit deinem Avatar durch den riesigen Heckengarten – durchs richtige Tor!', color: 'purple', art: '<span class="emo">🧭</span>', three: true, modes: ['speed', 'countdown', 'survive'],
+    howto: 'Du läufst mit deinem Avatar durch einen riesigen Heckengarten. An jeder Kreuzung erscheint eine Rechnung, und drei magische Tore warten, über jedem ein Ergebnis. Hinter jedem Tor geht ein Gang weiter, aber nur das richtige führt zum Schatz – die Lichtsäule über den Hecken zeigt, wo er ungefähr liegt. Achtung Fallen: Stachelplatten fahren hoch, Falltüren klappen auf, Dornenranken stechen – pass den richtigen Moment ab! In Sackgassen findest du Belohnungen. Die Karte oben rechts zeigt, wo du schon warst. Steuern: Pfeiltasten (↑ gehen, ← → drehen) oder der Joystick.' },
   { id: 'snake', name: 'Zahlen-Schlange', desc: 'Friss das richtige Ergebnis und werde immer länger!', color: 'lime', art: '<span class="emo">🐍</span>', modes: ['sudden'],
     howto: 'Oben steht eine Rechnung, auf dem Feld leuchten drei Zahlen. Lenk die Schlange zur richtigen – sie frisst sie und wird länger. Falsche Zahlen machen sie kürzer. Beisst sie sich mit dem Kopf in den eigenen Körper, ist das Spiel vorbei – je länger sie wird, desto kniffliger! Lenken: Pfeiltasten ↑ ↓ ← → (auch schräg) – die Schlange schwimmt weich in diese Richtung. Auf dem Tablet mit dem Joystick oder Finger aufs Feld halten.' },
   { id: 'puzzle', name: '1×1-Tafel-Puzzle', desc: 'Reihe mal Spalte: Rechne aus, welches Ergebnis in welches Feld gehört!', color: 'purple', art: '<span class="emo">🧩</span>', modes: ['speed'],
@@ -101,20 +99,20 @@ const RUN = { ms: 60000, goal: 20, lives: 3 };
 const HEART_SVG = '<svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.2 10.6 20C5.4 15.3 2 12.2 2 8.4 2 5.3 4.4 3 7.4 3c1.7 0 3.4.8 4.6 2.1C13.2 3.8 14.9 3 16.6 3 19.6 3 22 5.3 22 8.4c0 3.8-3.4 6.9-8.6 11.6z"/></svg>';
 const GAME_MODES = {
   countdown: { name: 'Countdown', icon: () => icon('clock'), short: '60 Sekunden',
-    desc: (id) => ({ runner: 'Lauf 60 Sekunden lang durch möglichst viele richtige Bögen. Hindernisse bremsen dich, kosten aber kein Leben.', maze: 'Möglichst viele richtige Schritte in 60 Sekunden. Falsche Felder halten dich nur auf.', tower: 'Bau in 60 Sekunden einen möglichst hohen Turm.', snake: 'Friss in 60 Sekunden möglichst viele richtige Zahlen.', castle: 'Wehre in 60 Sekunden möglichst viele Monster ab. Ein Monster, das die Burg erreicht, kostet nichts – bringt aber auch keinen Punkt.' }[id] || 'Möglichst viele richtige Antworten in 60 Sekunden. Extrazeit gibt es nicht.') },
+    desc: (id) => ({ runner: 'Lauf 60 Sekunden lang durch möglichst viele richtige Bögen. Hindernisse bremsen dich, kosten aber kein Leben.', maze: 'Sanduhr: Du startest mit 60 Sekunden. Jedes richtige Tor +8 s, Sanduhren ⏳ in Sackgassen +5 s; falsches Tor −5 s, Falle −4 s. Wie weit kommst du – schaffst du es bis zum Schatz?', tower: 'Bau in 60 Sekunden einen möglichst hohen Turm.', snake: 'Friss in 60 Sekunden möglichst viele richtige Zahlen.', castle: 'Wehre in 60 Sekunden möglichst viele Monster ab. Ein Monster, das die Burg erreicht, kostet nichts – bringt aber auch keinen Punkt.' }[id] || 'Möglichst viele richtige Antworten in 60 Sekunden. Extrazeit gibt es nicht.') },
   sudden: { name: 'Ein Leben', icon: () => HEART_SVG, short: 'bis zum 1. Fehler',
     desc: (id) => (id === 'snake' ? 'Werde so lang wie möglich! Jede richtige Zahl macht dich länger, falsche Zahlen kürzer. Beisst du dich selbst, ist das Spiel vorbei. Alle 5 richtigen wirst du schneller.'
       : 'Nur ein Leben: Lauf so weit du kannst. Beim ersten Hindernis, Absturz oder falscher Antwort ist es vorbei.') },
   survive: { name: 'Survive', icon: () => HEART_SVG, short: '3 Leben',
     desc: (id) => id === 'runner' ? '3 Leben – lauf so weit wie möglich. Eine falsche Antwort, ein Hindernis oder ein Sturz in einen Abgrund kostet ein Leben. Jede richtige Antwort macht dich ein bisschen schneller.'
-      : id === 'maze' ? '3 Leben – 24 Tore durch einen noch grösseren Garten bis zum Schatz. Jedes falsche Tor kostet ein Leben.'
+      : id === 'maze' ? 'Fallen-Labyrinth: 3 Leben, 24 Tore bis zum Schatz. Stacheln, Falltüren, Dornen und falsche Tore kosten je ein Leben. Herzen ❤️ in Sackgassen geben eines zurück.'
         : id === 'tower' ? '3 Leben – eine falsche Antwort oder ein Block, der danebenfällt, kostet eines. Je höher der Turm, desto schneller schwingt der Kran.'
           : id === 'castle' ? '3 Leben – jedes Monster, das die Burg erreicht, kostet eines. Alle 5 abgewehrten Monster kommen mehr und schnellere.'
           : id === 'snake' ? '3 Leben – eine falsche Zahl oder ein Biss in den eigenen Schwanz kostet eines. Alle 5 richtigen wird die Schlange schneller.' : `3 Leben – halte so lange wie möglich durch. Jede falsche Antwort kostet ein Leben. Alle 5 richtigen kommt ein neues Level, und du hast 10 % weniger Zeit pro Rechnung.${id === 'meteor' ? ' Beim letzten Leben fliegt ab und zu ein Ufo vorbei: Triffst du es, gibt es ein Extraleben.' : ''}` },
   speed: { name: 'Speed', icon: () => icon('bolt'), short: '20 richtige',
     desc: (id) => (id === 'memory' ? 'Finde alle Paare so schnell wie möglich. Ein falsches Paar kostet 3 Sekunden.'
       : id === 'puzzle' ? 'Leg alle Teile so schnell wie möglich an den richtigen Platz. Ein falscher Platz kostet 3 Sekunden.'
-      : id === 'maze' ? 'Lauf durch 10 Tore bis zum Schatz – so schnell wie möglich. Ein falsches Tor kostet 3 Sekunden.'
+      : id === 'maze' ? 'Schnell zum Schatz: 10 Tore, die Zeit zählt. Falsches Tor +3 s, Falle +2 s. Blitze ⚡ in Sackgassen geben Turbo.'
       : id === 'kart' ? 'Drei Runden, so schnell wie möglich. Jede 4. richtige Antwort = Turbo, falsch = kurz langsamer. Deine Zeit kommt in die Bestenliste.'
         : '20 richtige Antworten – so schnell wie möglich. Jede falsche verlangt eine Rechnung mehr.') },
 };
@@ -180,7 +178,7 @@ function runHud() {
   if (r.mode === 'countdown') {
     const left = runLeft();
     $$('[data-run="time"]').forEach((el) => { el.textContent = Math.ceil(left / 1000); });
-    $$('[data-run="bar"]').forEach((el) => { el.style.transform = `scaleX(${left / RUN.ms})`; el.parentNode.classList.toggle('low', left < 10000); });
+    $$('[data-run="bar"]').forEach((el) => { el.style.transform = `scaleX(${Math.min(1, left / RUN.ms)})`; el.parentNode.classList.toggle('low', left < 10000); });
   } else if (r.mode === 'speed') $$('[data-run="time"]').forEach((el) => { el.textContent = fmtSec(runElapsed()); });
   $$('[data-run="lives"]').forEach((el) => [...el.children].forEach((h, i) => h.classList.toggle('off', i >= r.lives)));
   $$('[data-run="level"]').forEach((el) => { el.textContent = surviveLevel(); });
@@ -260,10 +258,10 @@ function runFinish(why) {
 /* ---------------- Ergebnis und Bestenliste ---------------- */
 // Sterne: [1, 2, 3 Sterne]; Speed in Sekunden (weniger ist besser)
 const STAR_LIMITS = {
-  countdown: { elfmeter: [6, 11, 16], meteor: [6, 11, 16], frog: [6, 11, 16], target: [6, 11, 16], truefalse: [12, 22, 32], runner: [4, 7, 10], maze: [8, 14, 20], tower: [4, 8, 12], snake: [5, 9, 14], castle: [8, 14, 20] },
+  countdown: { elfmeter: [6, 11, 16], meteor: [6, 11, 16], frog: [6, 11, 16], target: [6, 11, 16], truefalse: [12, 22, 32], runner: [4, 7, 10], maze: [6, 11, 16], tower: [4, 8, 12], snake: [5, 9, 14], castle: [8, 14, 20] },
   survive: { elfmeter: [6, 12, 20], meteor: [6, 12, 20], frog: [6, 12, 20], target: [6, 12, 20], truefalse: [10, 20, 35], runner: [5, 10, 18], maze: [5, 10, 18], tower: [5, 10, 18], snake: [5, 10, 18], castle: [8, 16, 26] },
   sudden: { runner: [3, 7, 12], snake: [5, 10, 18] },
-  speed: { elfmeter: [140, 100, 75], meteor: [140, 100, 70], frog: [150, 110, 80], target: [150, 105, 80], truefalse: [90, 60, 40], memory: [80, 50, 32], puzzle: [150, 100, 65], maze: [150, 100, 70] },
+  speed: { elfmeter: [140, 100, 75], meteor: [140, 100, 70], frog: [150, 110, 80], target: [150, 105, 80], truefalse: [90, 60, 40], memory: [80, 50, 32], puzzle: [150, 100, 65], maze: [230, 165, 120] },
 };
 function runStars(r, score) {
   const l = STAR_LIMITS[r.mode]?.[r.id];
@@ -291,10 +289,10 @@ function showRunResult(r) {
   if (rec) { db.prog.best[key] = score; saveDB(); }
   const st = runStars(r, score);
   if (st >= 2 || rec) { sfx.win(); confetti(); }
-  const title = { time: 'Zeit ist um!', lives: r.id === 'snake' ? 'Autsch – in dich selbst gebissen!' : 'Keine Leben mehr!', done: r.id === 'memory' ? 'Alle Paare gefunden!' : r.id === 'puzzle' ? 'Puzzle fertig!' : 'Geschafft!' }[r.why] || 'Fertig!';
+  const title = { time: 'Zeit ist um!', lives: r.id === 'snake' ? 'Autsch – in dich selbst gebissen!' : 'Keine Leben mehr!', done: r.id === 'memory' ? 'Alle Paare gefunden!' : r.id === 'puzzle' ? 'Puzzle fertig!' : r.id === 'maze' ? 'Schatz gefunden! 💎' : 'Geschafft!' }[r.why] || 'Fertig!';
   const line = lower
     ? `${r.id === 'memory' ? `${r.goal} Paare` : r.id === 'puzzle' ? `${r.goal} Teile` : `${r.goal} richtige`} in <b>${fmtSec(score)} s</b>${r.wrong ? ` · ${r.wrong} falsch` : ' · ohne Fehler'}`
-    : `<b>${r.ok}</b> ${(typeof g2Noun === 'function' && g2Noun(r.id, r.ok)) || (r.ok === 1 ? 'richtige Antwort' : 'richtige Antworten')}${r.mode === 'countdown' ? ' in 60 Sekunden' : ''}${livesMode(r.mode) ? ` · <b>Level ${Math.floor(r.ok / SURVIVE.step) + 1}</b> erreicht` : ''}${r.wrong ? ` · ${r.wrong} falsch` : ''}`;
+    : `<b>${r.ok}</b> ${(typeof g2Noun === 'function' && g2Noun(r.id, r.ok)) || (r.ok === 1 ? 'richtige Antwort' : 'richtige Antworten')}${r.mode === 'countdown' ? (r.id === 'maze' ? (r.why === 'done' ? ' – Schatz erreicht!' : ', bevor die Sanduhr ablief') : ' in 60 Sekunden') : ''}${livesMode(r.mode) ? ` · <b>Level ${Math.floor(r.ok / SURVIVE.step) + 1}</b> erreicht` : ''}${r.wrong ? ` · ${r.wrong} falsch` : ''}`;
   const wrongs = [...new Map(r.wrongs.map((t) => [t.key + t.op, t])).values()].slice(0, 8);
   $('#view').innerHTML = gameShell(r.id, `<div class="run-result">
       <div class="result">
@@ -346,6 +344,7 @@ function boardListHTML(data, { kid: forKid = false } = {}) {
 /* ---------------- Startkarte: Modus, Aufgabenart und Münze ---------------- */
 function gateOptionsHTML(id) {
   const seg = (action, cur, list) => `<div class="seg">${list.map(([v, t]) => `<button class="seg-btn" data-action="${action}" data-v="${v}" aria-pressed="${String(cur) === String(v)}">${t}</button>`).join('')}</div>`;
+  if (id === 'maze') { let st = 1; try { st = runnerSkill().stage; } catch { /* */ } return `<p class="gate-type ${st >= 3 ? 'on' : ''}">${st >= 3 ? `⏱️ Du rechnest im Training schon sicher – darum läuft an den Toren ein Zeitbalken (${[0, 0, 0, 12, 10, 8.5][st]} s). Zu langsam zählt wie ein falsches Tor.` : '🧘 An den Toren hast du so viel Zeit, wie du brauchst. Wer im Training sehr sicher rechnet, bekommt einen Zeitbalken.'}</p>`; }
   if ((id === 'ships' || id === 'dice') && typeof g2Typing === 'function') return `<p class="gate-type ${g2Typing() ? 'on' : ''}">${g2Typing() ? '⌨️ Du rechnest im Training schon sehr sicher – darum tippst du die Ergebnisse hier <b>selbst ein</b>.' : '👆 Du wählst aus 4 Ergebnissen. Wer im Training sehr sicher rechnet, tippt die Ergebnisse selbst ein.'}</p>`;
   if (id === 'duel') return seg('duel-goal', db.settings.duelGoal || 10, [[5, 'bis 5'], [10, 'bis 10'], [15, 'bis 15']]);
   if (id === 'puzzle' && typeof pzBig === 'function') return `<p class="label">Tafel</p>${seg('pz-big', pzBig() ? 1 : 0, [[0, 'Kleines 1×1 (10 × 10)'], [1, 'Grosses 1×1 (20 × 10)']])}`;
