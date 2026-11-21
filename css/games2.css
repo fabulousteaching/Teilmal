@@ -708,3 +708,14 @@ button.dc-die[data-action]:hover { transform: translateY(-3px); }
   .game-ships.placing .sh-side.mine .sh-sea { width: calc((100dvh - 92px) * 1.12); max-width: 62vw; max-height: none; }
   .game-ships.placing .sh-place-bar { grid-area: bar; flex-direction: column; align-items: stretch; }
 }
+/* Labyrinth: Rechnung am Loch im Boden */
+.mz3-pit { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 6; display: grid; justify-items: center; gap: 6px; padding: 8px 14px 10px; width: min(92%, 380px); border-radius: 20px; color: #fff; text-align: center;
+  background: linear-gradient(150deg, rgba(120, 53, 15, .92), rgba(41, 37, 36, .9)); border: 1.5px solid rgba(255, 255, 255, .25); box-shadow: 0 20px 44px -20px rgba(0, 0, 0, .75); }
+.mz3-pit small { font-size: .7rem; font-weight: 800; letter-spacing: .03em; opacity: .85; }
+.mz3-pit.pop { animation: mz3-pit-in .35s cubic-bezier(.2, 1.4, .4, 1); }
+@keyframes mz3-pit-in { from { transform: translateX(-50%) translateY(20px) scale(.9); opacity: 0; } }
+.mz3-pit.bad { animation: shake .35s; }
+.mz3-pans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+.mz3-pa { position: relative; padding: 8px 4px; border: 0; border-radius: 14px; background: #fff7ed; color: #431407; font: 800 1.4rem var(--font-display); cursor: pointer; touch-action: manipulation; box-shadow: inset 0 -4px 0 #fdba74; }
+.mz3-pa small { position: absolute; left: 7px; top: 3px; font: 600 .6rem var(--font-body, sans-serif); color: #9a3412; }
+@media (max-width: 600px) { .mz3-pit { bottom: 150px; } }

@@ -3,8 +3,8 @@
  * Ein grosser Heckengarten auf einem Raster, jedes Mal neu erzeugt. Der Weg zum Schatz windet sich hindurch; an Kreuzungen
  * stehen drei magische Tore, über jedem eine Antwort-Blase. Hinter JEDEM Tor geht ein echter Gang weiter – nur das richtige
  * Tor führt zum Schatz (eine Lichtsäule über den Hecken zeigt, wo er ungefähr liegt). Breite Gänge mit Fallen:
- * Stachelplatten (fahren im Takt hoch), Falltüren (klappen auf, man fällt hinein und startet am letzten sicheren Ort)
- * und Dornenranken im Zickzack. In Sackgassen: Belohnungen (Speed ⚡ Turbo, Sanduhr ⏳ +5 s, Survive ❤️ +1 Leben)
+ * Löcher im Boden (eine Rechnung lösen, dann kommen Bretter), Falltüren (klappen auf, man fällt hinein und startet am
+ * letzten sicheren Ort) und Dornenranken im Zickzack. In Sackgassen: Belohnungen (Speed ⚡ Turbo, Sanduhr ⏳ +5 s, Survive ❤️ +1 Leben)
  * oder Deko (Brunnen, Spiegelkugel, Bank, Blumentöpfe, Pilze).
  * Modi: Speed (10 Tore, Zeit zählt; falsches Tor +3 s, Falle +2 s), Countdown = Sanduhr (60 s, richtiges Tor +8 s,
  * falsches −5 s, Falle −4 s; wie weit kommst du?), Survive (3 Leben; Fallen und falsche Tore kosten je eines).
@@ -156,13 +156,14 @@ async function startMaze3D() {
   runPause(true);
   const modeText = { speed: `${GN} Tore bis zum Schatz – so schnell wie möglich. Falsches Tor +3 s, Falle +2 s. ⚡ in Sackgassen = Turbo.`,
     countdown: `Sanduhr: 60 Sekunden zum Start, jedes richtige Tor +8 s, ⏳ in Sackgassen +5 s. Falsches Tor −5 s, Falle −4 s. Schaffst du es bis zum Schatz?`,
-    survive: `3 Leben: Stacheln, Falltüren, Dornen und falsche Tore kosten ein Leben. ❤️ in Sackgassen gibt eines zurück.` }[mode];
+    survive: `3 Leben: Ins Loch fallen, Falltüren, Dornen und falsche Tore kosten ein Leben. Vor einem Loch im Boden: rechnen, dann kommen Bretter. ❤️ in Sackgassen gibt eines zurück.` }[mode];
   $('#view').innerHTML = gameShell('maze', `
     <div class="mz3" id="mz3">
       <div class="mz3-top">${runHudHTML('rn-hud')}</div>
       <canvas class="mz3-map" id="mz3map" width="240" height="240" aria-hidden="true"></canvas>
       <div class="mz3-ask" id="mz3ask" hidden><small id="mz3hint">Geh durch das Tor mit dem richtigen Ergebnis</small><div class="mz3-q" id="mz3q"></div><span class="mz3-n" id="mz3n"></span><div class="mz3-clock" id="mz3clock" ${GATE_MS ? '' : 'hidden'}><i></i></div></div>
       <div class="mz3-pop" id="mz3pop"></div>
+      <div class="mz3-pit" id="mz3pit" hidden><small>Hier fehlt der Boden! Rechne – dann taucht er wieder auf.</small><div class="mz3-q" id="mz3pq"></div><div class="mz3-pans" id="mz3pans"></div></div>
       <div class="mz3-flash" id="mz3flash"></div>
       <div class="g2-joy" id="mz3joy" aria-label="Joystick"><i></i></div>
       <div class="mz3-help" id="mz3help"><span><b>↑</b> gehen</span><span><b>← →</b> drehen</span><span><b>↓</b> zurück</span><small>Pfeiltasten oder Joystick · ⚠️ Achtung Fallen!</small></div>
@@ -338,7 +339,7 @@ async function startMaze3D() {
   GS.forEach((g) => { noTrap.add(P[g.i - 1]); noTrap.add(P[g.i + 1]); g.sides.forEach((o) => noTrap.add(o.j)); });
   const straight = (c) => { const ds = dirsOf(c); return ds.length === 2 && (ds[0] + 2) % 4 === ds[1] ? (ds[0] % 2 ? 'x' : 'z') : null; };
   const near = (c) => [...trapAt.keys()].some((t) => Math.abs(X(t) - X(c)) + Math.abs(Z(t) - Z(c)) <= 2);
-  const kinds = ['spikes', 'door', 'thorns'];
+  const kinds = ['pit', 'door', 'thorns'];
   // vor allem auf dem Weg zum Schatz, ein paar auch in Nebengängen
   const onPath = P.map((c, i) => ({ c, i })).filter(({ c, i }) => i > 2 && !junction.has(c) && !noTrap.has(c) && straight(c));
   shuffle(onPath);
@@ -356,26 +357,32 @@ async function startMaze3D() {
   }
   // gemeinsame Teile
   const metal = keep(new T.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.4, metalness: 0.7 }));
-  const plateTex = ctex(cnv(128, 128, (g, w, h) => { g.fillStyle = '#4b5563'; g.fillRect(0, 0, w, h); g.strokeStyle = '#facc15'; g.lineWidth = 6; g.strokeRect(3, 3, w - 6, h - 6); for (let y = 0; y < 6; y++) for (let x = 0; x < 4; x++) { g.fillStyle = '#111827'; g.beginPath(); g.arc(18 + x * 31, 12 + y * 21, 4, 0, 7); g.fill(); } }));
-  const spikeGeo = keep(new T.ConeGeometry(0.09, 0.55, 6));
   const woodTex = ctex(cnv(128, 128, (g, w, h) => { g.fillStyle = '#8b5a2b'; g.fillRect(0, 0, w, h); for (let i = 0; i < 6; i++) { g.fillStyle = i % 2 ? '#7a4d24' : '#94612f'; g.fillRect(0, i * 21, w, 20); g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(0, i * 21 + 20, w, 2); } g.fillStyle = '#374151'; g.fillRect(10, 0, 8, h); g.fillRect(w - 18, 0, 8, h); }));
   const pitTex = ctex(cnv(128, 128, (g, w, h) => { const gr = g.createRadialGradient(64, 64, 8, 64, 64, 80); gr.addColorStop(0, '#000'); gr.addColorStop(1, '#3b2f22'); g.fillStyle = gr; g.fillRect(0, 0, w, h); }));
   const bushMat = keep(new T.MeshStandardMaterial({ color: 0x3f6b2a, roughness: 0.9, flatShading: true })), thornMat = keep(new T.MeshStandardMaterial({ color: 0xe7d3a8, roughness: 0.5 })), berryMat = keep(new T.MeshStandardMaterial({ color: 0xdc2626, emissive: 0x450a0a }));
   const bushGeo = keep(new T.IcosahedronGeometry(0.55, 0)), thornGeo = keep(new T.ConeGeometry(0.05, 0.38, 4)), berryGeo = keep(new T.SphereGeometry(0.06, 6, 5));
-  const SP_L = 2.2, DOOR_L = 2.3;
+  const DOOR_L = 2.3;
+  const pitMat = keep(new T.MeshBasicMaterial({ map: pitTex })), rimMat = keep(new T.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.9 })), plankMat = keep(new T.MeshStandardMaterial({ map: woodTex, roughness: 0.8 }));
+  const qSprite = keep(new T.SpriteMaterial({ map: qTex, transparent: true, depthWrite: false }));
   traps.forEach((tr) => {
     const g = tr.g;
-    if (tr.kind === 'spikes') {
-      const plate = new T.Mesh(boxGeo, keep(new T.MeshStandardMaterial({ map: plateTex, roughness: 0.5, metalness: 0.5, emissive: 0xff0000, emissiveIntensity: 0 })));
-      plate.scale.set(SP_L, 0.05, WIN - 0.1); plate.position.y = 0.03; plate.receiveShadow = true; g.add(plate); tr.plate = plate;
-      tr.sp = new T.Group(); g.add(tr.sp);
-      for (let a = 0; a < 4; a++) for (let b = 0; b < 6; b++) { const s = new T.Mesh(spikeGeo, metal); s.position.set(-0.75 + a * 0.5, 0.27, -1.5 + b * 0.6); s.castShadow = true; tr.sp.add(s); }
-      tr.sp.position.y = -0.6;
+    // dunkles Loch mit Steinrand (liegt sichtbar über dem Kiesboden, nichts in derselben Ebene)
+    const hole = () => {
+      const pit = new T.Mesh(boxGeo, pitMat); pit.scale.set(DOOR_L, 0.02, WIN - 0.04); pit.position.y = 0.03; g.add(pit);
+      for (const sx of [-1, 1]) { const rim = new T.Mesh(boxGeo, rimMat); rim.scale.set(0.26, 0.08, WIN - 0.02); rim.position.set(sx * (DOOR_L / 2 + 0.13), 0.045, 0); rim.receiveShadow = true; g.add(rim); }
+    };
+    if (tr.kind === 'pit') {
+      hole();
+      // Bretter, die erscheinen, wenn die Rechnung gelöst ist
+      tr.planks = new T.Group(); tr.planks.visible = false; g.add(tr.planks);
+      for (let i = 0; i < 6; i++) { const pl = new T.Mesh(boxGeo, plankMat); pl.scale.set(DOOR_L / 6 - 0.04, 0.09, WIN - 0.12); pl.position.set(-DOOR_L / 2 + DOOR_L / 12 + i * DOOR_L / 6, 0.08, 0); pl.receiveShadow = true; pl.castShadow = true; tr.planks.add(pl); }
+      const sp = new T.Sprite(qSprite); sp.scale.set(1.5, 0.64, 1); sp.position.set(0, 1.6, 0); g.add(sp); tr.qs = sp;
     } else if (tr.kind === 'door') {
-      const pit = new T.Mesh(boxGeo, keep(new T.MeshBasicMaterial({ map: pitTex }))); pit.scale.set(DOOR_L, 0.01, WIN - 0.05); pit.position.y = 0.015; g.add(pit);
+      hole();
+      // zwei Klappen, seitlich an den Hecken angeschlagen; sie klappen nach oben auf
       tr.flaps = [-1, 1].map((s) => {
-        const hinge = new T.Group(); hinge.position.set(s * DOOR_L / 2, 0.05, 0); g.add(hinge);
-        const f = new T.Mesh(boxGeo, keep(new T.MeshStandardMaterial({ map: woodTex, roughness: 0.8 }))); f.scale.set(DOOR_L / 2, 0.08, WIN - 0.1); f.position.x = -s * DOOR_L / 4; f.receiveShadow = true; hinge.add(f);
+        const hinge = new T.Group(); hinge.position.set(0, 0.1, s * (WIN / 2 - 0.04)); g.add(hinge);
+        const f = new T.Mesh(boxGeo, keep(new T.MeshStandardMaterial({ map: woodTex, roughness: 0.8 }))); f.scale.set(DOOR_L - 0.04, 0.08, WIN / 2 - 0.06); f.position.z = -s * (WIN / 4 - 0.01); f.castShadow = true; f.receiveShadow = true; hinge.add(f);
         hinge.userData.s = s; return hinge;
       });
     } else {
@@ -396,9 +403,7 @@ async function startMaze3D() {
     }
   });
   // Zustand der Fallen zur Zeit t (Sekunden)
-  const SP_T = 3.0, DR_T = 3.4;
-  const spikeH = (tr, t) => { const u = ((t + tr.ph) % SP_T); return u < 0.5 ? 0 : u < 0.7 ? (u - 0.5) / 0.2 : u < 1.7 ? 1 : u < 2.0 ? 1 - (u - 1.7) / 0.3 : 0; };
-  const spikeWarn = (tr, t) => { const u = ((t + tr.ph) % SP_T); return u < 0.5 ? u / 0.5 : 0; };
+  const DR_T = 3.4;
   const doorOpen = (tr, t) => { const u = ((t + tr.ph) % DR_T); return u < 0.4 ? 0 : u < 0.7 ? (u - 0.4) / 0.3 : u < 1.9 ? 1 : u < 2.2 ? 1 - (u - 1.9) / 0.3 : 0; };
   const doorWarn = (tr, t) => { const u = ((t + tr.ph) % DR_T); return u < 0.4 ? Math.sin(u * 60) * 0.05 : 0; };
 
@@ -578,7 +583,7 @@ async function startMaze3D() {
       if (mode === 'survive') pop(kind === 'slow' ? 'Zu langsam! −1 ❤️' : '−1 ❤️', 'bad');
       return runWrong(t);
     }
-    const name = { spikes: 'Stacheln!', door: 'Falltür!', thorns: 'Dornen!' }[kind] || 'Autsch!';
+    const name = { pit: 'Ins Loch gefallen!', door: 'Falltür!', thorns: 'Dornen!' }[kind] || 'Autsch!';
     if (mode === 'survive') {
       r.lives--;
       $$('[data-run="lives"]').forEach((el) => { const h = el.children[r.lives]; if (h) { h.classList.toggle('lost', false); void h.getBoundingClientRect(); h.classList.add('lost'); } });
@@ -628,9 +633,38 @@ async function startMaze3D() {
     if (!lose('slow', t)) setTimeout(() => { if (runOn() && !g.solved) ask(g); }, 700);
   }
 
+  /* ---------- Loch im Boden: Rechnung lösen, dann kommen Bretter ---------- */
+  function pitAsk(tr) {
+    const t = game.picker.next();
+    const vals = choicesFor(t, 3);
+    S.pit = { tr, t, vals, at: performance.now() };
+    $('#mz3pq').innerHTML = taskHTML(t, '<span class="slot">?</span>');
+    $('#mz3pans').innerHTML = vals.map((v, i) => `<button type="button" class="mz3-pa" data-action="mz-pit" data-v="${v}"><small>${i + 1}</small>${v}</button>`).join('');
+    const c = $('#mz3pit'); c.hidden = false; c.className = 'mz3-pit'; void c.offsetWidth; c.classList.add('pop');
+    tone([520, 660], 0.06, 'triangle', 0.05);
+  }
+  function pitHide() { S.pit = null; const c = $('#mz3pit'); if (c) c.hidden = true; }
+  function pitAnswer(v) {
+    const q = S.pit;
+    if (!q || !runOn()) return;
+    const ok = Number(v) === q.t.answer;
+    recordAnswer(q.t, v, performance.now() - q.at);
+    if (ok) {
+      q.tr.solved = true; q.tr.solveT = 0; if (q.tr.qs) q.tr.qs.visible = false;
+      sfx.good(); flash('good'); pop('Der Boden ist wieder da!', 'good');
+      pitHide();
+    } else {
+      sfx.bad();
+      const c = $('#mz3pit'); c.classList.remove('bad'); void c.offsetWidth; c.classList.add('bad');
+      if (lose('gate', q.t)) return;
+      setTimeout(() => { if (runOn() && S.pit === q) pitAsk(q.tr); }, 700);
+    }
+  }
+  game.mzPit = (v) => pitAnswer(v);
+
   /* ---------- Steuerung ---------- */
   const keyMap = { ArrowUp: 'f', w: 'f', W: 'f', ArrowDown: 'b', s: 'b', S: 'b', ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r' };
-  setGameKeys((e) => { const k = keyMap[e.key]; if (!k) return; e.preventDefault(); keys[k] = 1; begin(); });
+  setGameKeys((e) => { if (S.pit && /^[1-3]$/.test(e.key)) { e.preventDefault(); pitAnswer(S.pit.vals[+e.key - 1]); return; } const k = keyMap[e.key]; if (!k) return; e.preventDefault(); keys[k] = 1; begin(); });
   const keyUp = (e) => { const k = keyMap[e.key]; if (k) keys[k] = 0; };
   document.addEventListener('keyup', keyUp);
   const jo = g2Joystick($('#mz3joy'), (x, y) => { joy.x = x; joy.y = y; if (x || y) begin(); });
@@ -673,7 +707,7 @@ async function startMaze3D() {
     S.inv = 1.6;
     sfx.bad(); flash('bad');
     fig.setAnim('oops'); setTimeout(() => { if (!S.done) fig.setAnim(S.v ? 'run' : 'idle'); }, 500);
-    if (tr.kind === 'door') { S.fall = { t: 0 }; tone([400, 300, 200, 120], 0.09, 'sine', 0.06); }
+    if (tr.kind === 'door' || tr.kind === 'pit') { S.fall = { t: 0 }; tone([400, 300, 200, 120], 0.09, 'sine', 0.06); }
     else knock(tr);
     lose(tr.kind);
   }
@@ -707,10 +741,13 @@ async function startMaze3D() {
     if (!tr) { if (c >= 0 && Math.hypot(S.x - cx(c), S.z - cz(c)) < 1.2) S.safe = { x: cx(c), z: cz(c) }; }
     else if (!S.noTraps && S.inv <= 0) {
       const { a, l } = local(tr);
-      if (tr.kind === 'spikes' && Math.abs(a) < SP_L / 2 + R * 0.5 && Math.abs(l) < WIN / 2 && spikeH(tr, S.tt) > 0.45) hurt(tr);
+      if (tr.kind === 'pit' && !tr.solved && Math.abs(a) < DOOR_L / 2 - 0.15) hurt(tr);
       else if (tr.kind === 'door' && Math.abs(a) < DOOR_L / 2 - 0.1 && doorOpen(tr, S.tt) > 0.6) hurt(tr);
       else if (tr.kind === 'thorns' && solids.some((b) => b.trap === tr && hitBox(b, S.x, S.z, R + 0.1))) hurt(tr);
     }
+    // Loch in der Nähe? Rechnung zeigen; weit weg: wieder ausblenden
+    if (S.pit && (S.pit.tr.solved || Math.hypot(S.x - S.pit.tr.x, S.z - S.pit.tr.z) > 5.5)) pitHide();
+    if (!S.pit && !S.fall) for (const p2 of traps) { if (p2.kind !== 'pit' || p2.solved) continue; const lc = local(p2); if (Math.abs(lc.a) < 3.8 && Math.abs(lc.l) < WIN / 2) { pitAsk(p2); break; } }
     // Belohnungen
     for (const p of picks) {
       if (p.taken || Math.hypot(S.x - p.x, S.z - p.z) > 0.95) continue;
@@ -787,8 +824,8 @@ async function startMaze3D() {
     // Fallen bewegen (nur in der Nähe)
     for (const tr of traps) {
       if (Math.abs(tr.x - S.x) + Math.abs(tr.z - S.z) > 30) continue;
-      if (tr.kind === 'spikes') { tr.sp.position.y = -0.6 + spikeH(tr, S.tt) * 0.62 + (spikeWarn(tr, S.tt) > 0 ? Math.sin(S.t * 50) * 0.02 : 0); tr.plate.material.emissiveIntensity = spikeWarn(tr, S.tt) * 0.5; }
-      else if (tr.kind === 'door') { const o = doorOpen(tr, S.tt), w = doorWarn(tr, S.tt); tr.flaps.forEach((h) => { h.rotation.z = h.userData.s * (o * 1.45 + w); }); }
+      if (tr.kind === 'pit') { if (tr.qs) tr.qs.position.y = 1.6 + Math.sin(S.t * 2) * 0.08; if (tr.solveT != null && tr.solveT < 1) { tr.solveT = Math.min(1, tr.solveT + dt * 2.5); tr.planks.visible = true; tr.planks.children.forEach((pl, i) => { const k = Math.max(0, Math.min(1, tr.solveT * 2.2 - i * 0.2)); pl.position.y = 0.08 - (1 - k) * 0.6; pl.scale.y = 0.09 * Math.max(0.05, k); }); } }
+      else if (tr.kind === 'door') { const o = doorOpen(tr, S.tt), w = doorWarn(tr, S.tt); tr.flaps.forEach((h) => { h.rotation.x = h.userData.s * (o * 1.3 + w); }); }
       else tr.bushes.forEach((b, i) => { b.rotation.y = Math.sin(S.t * 1.3 + i) * 0.05; });
     }
     // Belohnungen drehen sich und schweben; aufgesammelt: gross und weg
