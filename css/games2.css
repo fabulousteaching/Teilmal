@@ -292,12 +292,17 @@
   background: radial-gradient(circle, rgba(255, 255, 255, .18) 0 40%, rgba(255, 255, 255, .32) 41%, rgba(255, 255, 255, .12) 70%); border: 2px solid rgba(255, 255, 255, .55); box-shadow: 0 8px 24px -10px rgba(0, 0, 0, .5); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
 .g2-joy i { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #c7d2fe 60%, #818cf8); box-shadow: 0 6px 14px rgba(0, 0, 0, .35); transition: transform .12s; }
 .g2-joy.on i { transition: none; }
-@media (hover: hover) and (pointer: fine) { .g2-joy { opacity: .7; } }
 @media (max-width: 600px) { .mz3 { height: min(72vh, 640px); border-radius: 16px; } .mz3-ask { top: auto; bottom: 12px; left: auto; right: 10px; transform: none; min-width: 0; max-width: calc(100% - 150px); padding: 6px 14px 8px; } .mz3-ask.pop { animation: none; } .mz3-ask.bad { animation: shake .35s; } .mz3-ask .mz3-q { font-size: 1.6rem; } .mz3-ask small { font-size: .58rem; } .g2-joy { width: 118px; height: 118px; } }
 
 /* Turbo-Rennen: Joystick statt der Lenk-Anzeigen links/rechts (Tippen auf die Bildhälften geht weiterhin) */
 .kart-joy { left: 16px; bottom: 16px; }
-.kart-joy ~ .kart-pad, .kart-pad:has(~ .kart-joy) { display: none; }
+/* Joysticks nur auf Touch-Geräten ohne Tastatur (Klassen auf <html> aus js/main.js) */
+.g2-joy { display: none; }
+html.touch:not(.kbd) .g2-joy { display: block; }
+html.touch:not(.kbd) .kart-pad { display: none; }
+.only-touch { display: none; }
+html.touch:not(.kbd) .only-touch { display: inline; }
+html.touch:not(.kbd) .only-kbd { display: none; }
 
 /* ---------------- 🚢 Schiffe versenken ---------------- */
 .sh-status { margin: 10px auto 8px; max-width: 720px; padding: 10px 16px; border-radius: 16px; text-align: center; font-weight: 700; color: var(--ink-2); background: var(--paper); box-shadow: var(--shadow-soft); min-height: 1.4em; }
@@ -570,3 +575,7 @@ button.dc-die[data-action]:hover { transform: translateY(-3px); }
 .tw3-pop { position: absolute; left: 50%; top: 38%; z-index: 4; transform: translate(-50%, -50%) scale(.6); opacity: 0; pointer-events: none; padding: 8px 22px; border-radius: 99px; background: linear-gradient(135deg, #fde047, #f59e0b); color: #78350f; font: 900 clamp(1.4rem, 5vw, 2.2rem) var(--font-display); box-shadow: 0 10px 30px -10px rgba(245, 158, 11, .9); }
 .tw3-pop.on { animation: tw3-pop 1.1s ease forwards; }
 @keyframes tw3-pop { 15% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); } 30% { transform: translate(-50%, -50%) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -90%) scale(1); } }
+/* Schlange: Joystick unter dem Feld (statt Drehknöpfen) */
+.sn-pad .g2-joy.sn-joy { position: relative; left: auto; bottom: auto; width: 112px; height: 112px; flex: none; }
+.sn-pad .g2-joy.sn-joy { background: radial-gradient(circle, color-mix(in srgb, var(--c) 10%, var(--paper)) 0 55%, color-mix(in srgb, var(--c) 22%, var(--paper))); border: 2px solid color-mix(in srgb, var(--c) 45%, transparent); box-shadow: var(--shadow-soft); }
+.sn-pad .g2-joy.sn-joy i { width: 50px; height: 50px; margin: -25px; background: radial-gradient(circle at 35% 30%, #fff, var(--c) 75%); box-shadow: 0 6px 14px -6px var(--c); }

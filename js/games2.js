@@ -407,14 +407,13 @@ function startSnake() {
     <div class="sn-task" id="sntask"></div>
     <div class="sn-stage" id="snstage"><canvas id="sncv"></canvas><div class="sn-go" id="sngo">Bereit?</div></div>
     <div class="sn-pad">
-      <button type="button" class="sn-turn" id="snl" aria-label="nach links drehen">↺</button>
-      <span class="sn-pad-hint">oder mit dem Finger lenken</span>
-      <button type="button" class="sn-turn" id="snr" aria-label="nach rechts drehen">↻</button>
+      <div class="g2-joy sn-joy" id="snjoy" aria-label="Joystick"><i></i></div>
+      <span class="sn-pad-hint"><span class="only-touch">Joystick – oder Finger aufs Feld</span><span class="only-kbd">Pfeiltasten ↑ ↓ ← → – oder Maus aufs Feld</span></span>
     </div>
-    <p class="mode-hint">Lenke die Schlange zum richtigen Ergebnis: Finger oder Maus aufs Feld halten, Pfeiltasten ← → oder die Drehknöpfe. Beisst sie sich selbst, ist das Spiel vorbei.</p>`);
+    <p class="mode-hint">Lenke die Schlange zum richtigen Ergebnis: Pfeiltasten ↑ ↓ ← →, Joystick oder Finger/Maus aufs Feld halten. Beisst sie sich selbst, ist das Spiel vorbei.</p>`);
   const st = $('#snstage'), cv = $('#sncv');
   const W = st.clientWidth, H = st.clientHeight;
-  game.sn = { W, H, x: W * 0.3, y: H * 0.55, ang: 0, aim: null, turn: 0, keys: { l: 0, r: 0 }, path: [], len: SN.LEN0, travel: 0, foods: [], t: null,
+  game.sn = { W, H, x: W * 0.3, y: H * 0.55, ang: 0, aim: null, turn: 0, keys: { l: 0, r: 0, u: 0, dn: 0 }, joy: { x: 0, y: 0 }, path: [], len: SN.LEN0, travel: 0, foods: [], t: null,
     skin: g2Pick(SN_SKINS), flash: 0, parts: [], floats: [], started: false, dead: false, last: 0, open: 0, tongue: 0 };
   for (let i = 0; i < 60; i++) game.sn.path.push({ x: game.sn.x - i * 2.5, y: game.sn.y });
   snResize();
@@ -430,19 +429,17 @@ function startSnake() {
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   cv.addEventListener('pointerleave', () => { if (!down) game.sn.aim = null; });
   cv.style.touchAction = 'none';
-  // Drehknöpfe (gedrückt halten)
-  for (const [id, d] of [['#snl', -1], ['#snr', 1]]) {
-    const b = $(id);
-    const on = (e) => { e.preventDefault(); game.sn.keys[d < 0 ? 'l' : 'r'] = 1; game.sn.aim = null; snGo(); };
-    const off = () => { game.sn.keys[d < 0 ? 'l' : 'r'] = 0; };
-    b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('pointerleave', off);
-  }
+  // Joystick (Tablet/Handy): die Schlange dreht sich weich in die gezeigte Richtung
+  const jo = g2Joystick($('#snjoy'), (x, y) => { const sn = game.sn; if (!sn) return; sn.joy = { x, y }; if (Math.hypot(x, y) > 0.3) { sn.aim = null; snGo(); } });
+  if (jo) game.cleanups.push(() => jo.dispose());
+  // Pfeiltasten: in die gedrückte Richtung (auch schräg, z. B. ↑ + →)
+  const KEYS = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r', ArrowUp: 'u', w: 'u', W: 'u', ArrowDown: 'dn', s: 'dn', S: 'dn' };
   setGameKeys((e) => {
-    const k = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r' }[e.key];
+    const k = KEYS[e.key];
     if (!k) return;
     e.preventDefault(); game.sn.keys[k] = 1; game.sn.aim = null; snGo();
   });
-  const keyUp = (e) => { const k = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r' }[e.key]; if (k && game.sn) game.sn.keys[k] = 0; };
+  const keyUp = (e) => { const k = KEYS[e.key]; if (k && game.sn) game.sn.keys[k] = 0; };
   document.addEventListener('keyup', keyUp);
   game.cleanups.push(() => document.removeEventListener('keyup', keyUp));
   snTask();
@@ -502,13 +499,13 @@ const snNorm = (a) => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.P
 function snStep(dt) {
   const s = game.sn, r = game.run;
   const v = Math.min(SN.VMAX, SN.V0 + (surviveLevel() - 1) * 14);
-  // lenken
-  const kt = s.keys.r - s.keys.l;
-  if (kt) s.ang += kt * SN.TURN * dt;
-  else if (s.aim) {
-    const want = Math.atan2(s.aim.y - s.y, s.aim.x - s.x);
-    if (Math.hypot(s.aim.x - s.x, s.aim.y - s.y) > SN.R) s.ang += Math.max(-SN.TURN * dt, Math.min(SN.TURN * dt, snNorm(want - s.ang)));
-  }
+  // lenken: Pfeiltasten oder Joystick geben die Richtung vor, Finger/Maus ein Ziel – die Schlange dreht sich weich dorthin
+  const kx = s.keys.r - s.keys.l, ky = s.keys.dn - s.keys.u;
+  let want = null;
+  if (kx || ky) want = Math.atan2(ky, kx);
+  else if (Math.hypot(s.joy.x, s.joy.y) > 0.3) want = Math.atan2(s.joy.y, s.joy.x);
+  else if (s.aim && Math.hypot(s.aim.x - s.x, s.aim.y - s.y) > SN.R) want = Math.atan2(s.aim.y - s.y, s.aim.x - s.x);
+  if (want != null) s.ang += Math.max(-SN.TURN * dt, Math.min(SN.TURN * dt, snNorm(want - s.ang)));
   s.x += Math.cos(s.ang) * v * dt; s.y += Math.sin(s.ang) * v * dt;
   s.travel += v * dt;
   // Rand: sanft abprallen (kein Ende)

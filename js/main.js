@@ -109,6 +109,14 @@ if (typeof liveActions === 'object') Object.assign(actions, liveActions); // Liv
 
 
 /* Bei schnellen Spielen zählt schon das Antippen (pointerdown), sonst der Klick */
+/* Eingabe-Art: Touch-Gerät ohne Tastatur → Joysticks einblenden; sobald Pfeiltasten benutzt werden, wieder ausblenden */
+(function inputMode() {
+  const root = document.documentElement;
+  const coarse = matchMedia('(pointer: coarse)').matches || (matchMedia('(hover: none)').matches && navigator.maxTouchPoints > 0);
+  root.classList.toggle('touch', coarse);
+  document.addEventListener('keydown', (e) => { if (/^Arrow/.test(e.key) || /^[wasdWASD ]$/.test(e.key)) root.classList.add('kbd'); }, true);
+  document.addEventListener('touchstart', () => { root.classList.add('touch'); root.classList.remove('kbd'); }, { passive: true, capture: true });
+})();
 const FAST = new Set(['cs-key', 'sh-cell', 'sh-answer', 'dc-answer', 'lq-answer', 'bingo-mark', 'mz-step', 'tw-answer', 'meteor-hit', 'meteor-alien', 'elf-shoot', 'duel-tap', 'frog-jump', 'tf-answer', 'mem-flip', 'pad', 'ex-choice', 'g3-pick']);
 let lastFast = { el: null, t: 0 };
 document.addEventListener('pointerdown', (e) => {
