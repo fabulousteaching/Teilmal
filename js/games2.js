@@ -31,6 +31,24 @@ function g2Joystick(el, onChange) {
   return { dispose() { el.removeEventListener('pointerdown', down); el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); } };
 }
 
+/** Sehr sicher im 1×1 (Training: hohe Quote, viele sichere Rechnungen)? Dann Ergebnisse selbst eintippen statt auswählen */
+function g2Typing() {
+  try { const sk = runnerSkill(); return sk.n >= RUN_SKILL_MIN && sk.quote >= 0.9 && sk.sure >= 0.6; } catch { return false; }
+}
+/** Eingabe zum Eintippen: Anzeige und kleines Zahlenfeld (2 Reihen); Tasten gehen an game.typeKey */
+function g2TypeHTML(id) {
+  const k = (v, cls = '') => `<button type="button" class="cs-key ${cls}" data-action="g2-key" data-k="${v}">${v === 'back' ? '⌫' : v === 'ok' ? '✓' : v}</button>`;
+  return `<div class="g2-type"><span class="cs-typed" id="${id}"><small>Ergebnis tippen</small></span>
+    <div class="g2-keys">${[1, 2, 3, 4, 5].map((v) => k(v)).join('')}${k('back', 'back')}${[6, 7, 8, 9, 0].map((v) => k(v)).join('')}${k('ok', 'ok')}</div></div>`;
+}
+/** Tastendruck in eine Eingabe: liefert den neuen Text; bei ✓ wird onOk(Zahl) aufgerufen */
+function g2Type(cur, key, el, onOk) {
+  if (key === 'ok') { if (cur) onOk(Number(cur)); return cur; }
+  const next = key === 'back' ? cur.slice(0, -1) : cur.length < 3 ? cur + key : cur;
+  if (el) el.innerHTML = next || '<small>Ergebnis tippen</small>';
+  return next;
+}
+
 /** Reihen fürs Labyrinth und die Tafel (die 1er-Reihe wäre zu einfach: alles gehört dazu) */
 function g2Rows() { const rs = practiceSettings().reihen.filter((r) => r > 1); return rs.length ? rs : [2]; }
 
@@ -845,20 +863,28 @@ function shPlace(R, C) {
   }
   return { cells: new Map(), ships: [], shots: new Map() };
 }
-function startShips() {
-  const rows = shRows(), R = rows.length, C = 10;
-  Object.assign(game, { sh: { rows, R, C, me: shPlace(R, C), cpu: shPlace(R, C), turn: 'me', busy: false, ask: null, shots: 0, ok: 0, wrong: 0, targets: [] }, over: false });
+function startShips(opts = {}) {
+  const rows = shRows(), R = rows.length, C = 10, three = opts.three;
+  Object.assign(game, { sh: { rows, R, C, me: shPlace(R, C), cpu: shPlace(R, C), turn: 'me', busy: false, ask: null, shots: 0, ok: 0, wrong: 0, targets: [], typing: g2Typing(), typed: '' }, over: false });
   $('#view').innerHTML = gameShell('ships', `
     <div class="sh-play">
     <div class="sh-status" id="shstatus"></div>
     <div class="sh-wrap">
-      <div class="sh-side enemy"><p class="label">Flotte des Computers 🤖 – tippe ein Feld an</p><div class="sh-board big" id="shcpu"></div><div class="sh-fleet" id="shcpufleet"></div></div>
-      <div class="sh-side mine"><p class="label">Deine Flotte</p><div class="sh-board" id="shme"></div><div class="sh-fleet" id="shmefleet"></div><div class="sh-ask" id="shask" hidden></div></div>
+      <div class="sh-side enemy"><p class="label">Flotte des Computers 🤖 – tippe ein Feld an</p><div class="${three ? 'sh-sea big' : 'sh-board big'}" id="shcpu"></div><div class="sh-fleet" id="shcpufleet"></div></div>
+      <div class="sh-side mine"><p class="label">Deine Flotte</p><div class="${three ? 'sh-sea' : 'sh-board'}" id="shme"></div><div class="sh-fleet" id="shmefleet"></div><div class="sh-ask" id="shask" hidden></div></div>
     </div>
     </div>
     <p class="mode-hint">Tippe auf ein Feld der gegnerischen Tafel und rechne es aus (Spalte · Reihe). Richtig gerechnet → Schuss! Bei einem Treffer darfst du nochmals.</p>`);
+  if (three) sh3Mount(three);
   shDraw();
-  shStatus('Du beginnst! Tippe ein Feld an.');
+  shStatus(game.sh.typing ? 'Du beginnst! Tippe ein Feld an – du rechnest schon so sicher, dass du die Ergebnisse selbst eintippst.' : 'Du beginnst! Tippe ein Feld an.');
+  setGameKeys((e) => {
+    const sh = game.sh;
+    if (!sh?.ask || !sh.typing || sh.busy) return;
+    if (/^[0-9]$/.test(e.key)) { e.preventDefault(); game.typeKey?.(e.key); }
+    else if (e.key === 'Backspace') { e.preventDefault(); game.typeKey?.('back'); }
+    else if (e.key === 'Enter') { e.preventDefault(); game.typeKey?.('ok'); }
+  });
 }
 /** Schiff als zusammenhängende Form: Richtung, Heck (b-a) und Bug (b-z) */
 function shBoatCls(ship, r, c) {
@@ -881,6 +907,7 @@ function shBoardHTML(b, own) {
 function shFleetHTML(b) { return b.ships.map((x) => `<span class="sh-mini ${x.hits >= x.len ? 'sunk' : ''}">${'■'.repeat(x.len)}</span>`).join(''); }
 function shDraw() {
   const s = game.sh;
+  if (s.r3) { s.r3.sync(); $('#shcpufleet').innerHTML = shFleetHTML(s.cpu); $('#shmefleet').innerHTML = shFleetHTML(s.me); $('#shcpu').classList.toggle('wait', s.turn !== 'me'); return; }
   $('#shcpu').innerHTML = shBoardHTML(s.cpu, false);
   $('#shme').innerHTML = shBoardHTML(s.me, true);
   $('#shcpu').style.setProperty('--r', s.R); $('#shme').style.setProperty('--r', s.R);
@@ -895,21 +922,24 @@ function shCell(r, c) {
   const t = makeTask(c + 1, s.rows[r], 'mul'); // Spalte · Reihe (wie im Training: 3 · 7 gehört zur 7er-Reihe)
   t.shownAt = performance.now();
   s.ask = { r, c, t };
-  const vals = choicesFor(t, 4);
+  const vals = s.typing ? [] : choicesFor(t, 4);
   const box = $('#shask');
   box.hidden = false;
   // Handy hochkant: die Rechen-Karte liegt unten über dem Bildschirm – das gewählte Feld bleibt darüber sichtbar
   $('.game-ships')?.classList.add('asking');
   requestAnimationFrame(() => {
     const cell = $(`#shcpu .sh-cell[data-r="${r}"][data-c="${c}"]`);
-    if (!cell || getComputedStyle(box).position !== 'fixed') return;
-    const over = cell.getBoundingClientRect().bottom - box.getBoundingClientRect().top + 14;
+    if ((!cell && !s.r3) || getComputedStyle(box).position !== 'fixed') return;
+    const over = (s.r3 ? s.r3.screenY(r, c) : cell.getBoundingClientRect().bottom) - box.getBoundingClientRect().top + 14;
     if (over > 0) window.scrollBy({ top: over, behavior: reduceMotion() ? 'auto' : 'smooth' });
   });
   box.innerHTML = `<div class="sh-ask-card"><p class="small muted">Spalte ${c + 1} · Reihe ${s.rows[r]}</p><div class="task">${taskHTML(t, '<span class="slot">?</span>')}</div>
-    <div class="sh-ans">${vals.map((v) => `<button type="button" class="sh-a" data-action="sh-answer" data-v="${v}">${v}</button>`).join('')}</div>
+    ${s.typing ? g2TypeHTML('shtyped') : `<div class="sh-ans">${vals.map((v) => `<button type="button" class="sh-a" data-action="sh-answer" data-v="${v}">${v}</button>`).join('')}</div>`}
     <button type="button" class="link-btn" data-action="sh-cancel">anderes Feld wählen</button></div>`;
   $$('#shcpu .sh-cell').forEach((b) => b.classList.toggle('s-aim', +b.dataset.r === r && +b.dataset.c === c));
+  s.r3?.aim(r, c);
+  s.typed = '';
+  game.typeKey = (k) => { if (game.sh?.ask && !game.sh.busy) game.sh.typed = g2Type(game.sh.typed, k, $('#shtyped'), (v) => shAnswer(v)); };
 }
 function shClose() {
   const s = game.sh;
@@ -917,6 +947,7 @@ function shClose() {
   const box = $('#shask');
   if (box) box.hidden = true;
   $('.game-ships')?.classList.toggle('asking', false);
+  s?.r3?.aim(null, null);
 }
 function shCancel() {
   const s = game.sh;
@@ -931,6 +962,8 @@ function shAnswer(v) {
   const ok = Number(v) === t.answer;
   recordAnswer(t, v, performance.now() - t.shownAt);
   $$('#shask .sh-a').forEach((b) => { b.disabled = true; if (Number(b.dataset.v) === t.answer) b.classList.add('right'); else if (b.dataset.v === String(v)) b.classList.add('wrong'); });
+  $$('#shask .cs-key').forEach((b) => { b.disabled = true; });
+  const ty = $('#shtyped'); if (ty) { ty.classList.add(ok ? 'good' : 'bad'); if (!ok) ty.innerHTML = `${esc(String(v))} <small>→ ${t.answer}</small>`; }
   s.busy = true;
   if (!ok) {
     s.wrong++;
