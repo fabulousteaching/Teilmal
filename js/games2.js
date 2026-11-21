@@ -1227,7 +1227,7 @@ function csTry(force) {
   const hit = c.mons.filter((m) => m.t.answer === v).sort((a, b) => a.x - b.x)[0];
   if (hit) {
     recordAnswer(hit.t, v, performance.now() - hit.t.shownAt);
-    csShoot(hit);
+    if (c.r3) c.r3.shoot(hit); else csShoot(hit); // 3D-Version: js/castle3d.js
     c.typed = ''; $('#cstyped').innerHTML = CS_EMPTY;
     sfx.good();
     runRight();
