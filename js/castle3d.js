@@ -10,95 +10,36 @@
 
 const CS3 = { LANES: [-3.9, -1.3, 1.3, 3.9], Z0: -40, Z1: -8.6 };
 
-/** Monster aus Klötzchen; liefert { root, legs, arms, body, head, kind, h } */
-function cs3Monster(T, kind, box, mats) {
-  const root = new T.Group(), inner = new T.Group(); root.add(inner);
-  const M = (c, extra = {}) => { const k = `${kind}:${c}:${JSON.stringify(extra)}`; if (!mats.has(k)) mats.set(k, new T.MeshStandardMaterial({ color: c, roughness: 0.7, ...extra })); return mats.get(k); };
-  const part = (parent, color, x, y, z, w, h, d, extra) => { const m = new T.Mesh(box, M(color, extra)); m.position.set(x, y, z); m.scale.set(w, h, d); m.castShadow = true; parent.add(m); return m; };
-  const limb = (parent, color, x, y, z, w, h, d) => { const g = new T.Group(); g.position.set(x, y, z); part(g, color, 0, -h / 2, 0, w, h, d); parent.add(g); return g; };
-  const eyes = (parent, y, z, gap, size, col = 0xffffff, pupil = 0x111827) => {
-    for (const s of [-1, 1]) { part(parent, col, s * gap, y, z, size, size, 0.06, { emissive: col === 0xffffff ? 0x000000 : col, emissiveIntensity: 0.6 }); part(parent, pupil, s * gap + s * 0.01, y - size * 0.1, z + 0.035, size * 0.45, size * 0.5, 0.04); }
-  };
-  const o = { root, inner, legs: [], arms: [], kind };
-  if (kind === 'goblin') {
-    const g = 0x4caf50, dg = 0x2e7d32;
-    o.legs = [limb(inner, dg, -0.16, 0.55, 0, 0.22, 0.55, 0.24), limb(inner, dg, 0.16, 0.55, 0, 0.22, 0.55, 0.24)];
-    o.body = part(inner, g, 0, 0.85, 0, 0.62, 0.62, 0.42);
-    part(inner, 0x8d6e63, 0, 0.62, 0, 0.64, 0.12, 0.44);
-    o.head = new T.Group(); o.head.position.set(0, 1.42, 0); inner.add(o.head);
-    part(o.head, g, 0, 0, 0, 0.6, 0.52, 0.52);
-    for (const s of [-1, 1]) { const e = part(o.head, g, s * 0.42, 0.06, 0, 0.36, 0.14, 0.08); e.rotation.z = s * 0.45; }
-    eyes(o.head, 0.06, 0.27, 0.14, 0.15, 0xfde047);
-    part(o.head, 0x1b5e20, 0, -0.14, 0.27, 0.3, 0.06, 0.04);
-    for (const s of [-1, 1]) part(o.head, 0xffffff, s * 0.08, -0.1, 0.285, 0.05, 0.07, 0.03);
-    o.arms = [limb(inner, g, -0.4, 1.08, 0, 0.18, 0.5, 0.2), limb(inner, g, 0.4, 1.08, 0, 0.18, 0.5, 0.2)];
-    const club = part(o.arms[1], 0x8d5a2b, 0, -0.55, 0.22, 0.14, 0.14, 0.6); club.rotation.x = -0.3;
-    o.h = 1.8;
-  } else if (kind === 'cyclops') {
-    const p = 0x8e5bd6, dp = 0x5b3a96;
-    o.legs = [limb(inner, dp, -0.24, 0.6, 0, 0.3, 0.6, 0.32), limb(inner, dp, 0.24, 0.6, 0, 0.3, 0.6, 0.32)];
-    o.body = part(inner, p, 0, 1.02, 0, 0.95, 0.85, 0.6);
-    part(inner, 0xc4a484, 0, 0.72, 0, 0.98, 0.22, 0.62);
-    o.head = new T.Group(); o.head.position.set(0, 1.78, 0); inner.add(o.head);
-    part(o.head, p, 0, 0, 0, 0.78, 0.64, 0.6);
-    part(o.head, 0xffffff, 0, 0.06, 0.31, 0.38, 0.32, 0.04, { emissive: 0x333333 });
-    part(o.head, 0x0ea5e9, 0, 0.04, 0.335, 0.18, 0.18, 0.03, { emissive: 0x0369a1, emissiveIntensity: 0.6 });
-    part(o.head, 0x111827, 0, 0.04, 0.35, 0.08, 0.09, 0.02);
-    for (const s of [-1, 1]) { const h = part(o.head, 0xfef3c7, s * 0.24, 0.42, 0, 0.1, 0.26, 0.1); h.rotation.z = -s * 0.3; }
-    part(o.head, 0x3b1d6e, 0, -0.2, 0.31, 0.36, 0.08, 0.04);
-    for (const s of [-1, 1]) part(o.head, 0xfef9c3, s * 0.12, -0.13, 0.32, 0.07, 0.1, 0.03);
-    o.arms = [limb(inner, p, -0.6, 1.36, 0, 0.26, 0.7, 0.28), limb(inner, p, 0.6, 1.36, 0, 0.26, 0.7, 0.28)];
-    o.h = 2.3;
-  } else if (kind === 'slime') {
-    const mat = M(0x22d3ee, { transparent: true, opacity: 0.86, emissive: 0x0e7490, emissiveIntensity: 0.35, roughness: 0.25 });
-    const blob = new T.Mesh(cs3Monster.sphere || (cs3Monster.sphere = new T.SphereGeometry(0.62, 18, 14)), mat);
-    blob.scale.set(1, 0.8, 1); blob.position.y = 0.5; blob.castShadow = true; inner.add(blob); o.body = blob;
-    o.head = new T.Group(); o.head.position.set(0, 0.62, 0.5); inner.add(o.head);
-    eyes(o.head, 0, 0.02, 0.17, 0.2);
-    part(o.head, 0x0e7490, 0, -0.2, 0.03, 0.22, 0.06, 0.03);
-    const drop = part(inner, 0x67e8f9, 0.2, 1.05, 0, 0.14, 0.18, 0.14, { transparent: true, opacity: 0.85 }); drop.rotation.z = 0.6;
-    o.h = 1.3;
-  } else if (kind === 'ghost') {
-    const w = 0xf1f5f9;
-    const cone = new T.Mesh(cs3Monster.cone || (cs3Monster.cone = new T.CylinderGeometry(0.42, 0.62, 1.1, 10, 1, true)), M(w, { emissive: 0x94a3b8, emissiveIntensity: 0.35, transparent: true, opacity: 0.92, side: T.DoubleSide }));
-    cone.position.y = 0.75; cone.castShadow = true; inner.add(cone); o.body = cone;
-    const headM = new T.Mesh(cs3Monster.sphere2 || (cs3Monster.sphere2 = new T.SphereGeometry(0.46, 16, 12)), M(w, { emissive: 0x94a3b8, emissiveIntensity: 0.35, transparent: true, opacity: 0.95 }));
-    headM.position.y = 1.4; headM.castShadow = true; inner.add(headM);
-    o.head = new T.Group(); o.head.position.set(0, 1.42, 0.4); inner.add(o.head);
-    for (const s of [-1, 1]) part(o.head, 0x111827, s * 0.15, 0.04, 0, 0.12, 0.2, 0.06);
-    part(o.head, 0x111827, 0, -0.17, 0, 0.12, 0.12, 0.06);
-    o.arms = [limb(inner, w, -0.5, 1.05, 0, 0.14, 0.42, 0.14), limb(inner, w, 0.5, 1.05, 0, 0.14, 0.42, 0.14)];
-    o.arms.forEach((a) => { a.rotation.z = 0; a.children[0].material = headM.material; });
-    o.h = 1.9; o.float = true;
-  } else { // Feuerteufelchen
-    const r = 0xef4444, dr = 0xb91c1c;
-    o.legs = [limb(inner, dr, -0.13, 0.45, 0, 0.18, 0.45, 0.2), limb(inner, dr, 0.13, 0.45, 0, 0.18, 0.45, 0.2)];
-    o.body = part(inner, r, 0, 0.72, 0, 0.5, 0.5, 0.36);
-    o.head = new T.Group(); o.head.position.set(0, 1.18, 0); inner.add(o.head);
-    part(o.head, r, 0, 0, 0, 0.5, 0.44, 0.44);
-    eyes(o.head, 0.04, 0.23, 0.12, 0.13, 0xfde047);
-    for (const s of [-1, 1]) { const h = part(o.head, 0x1f2937, s * 0.17, 0.3, 0, 0.08, 0.22, 0.08); h.rotation.z = -s * 0.35; }
-    const flame = new T.Mesh(cs3Monster.flame || (cs3Monster.flame = new T.ConeGeometry(0.16, 0.42, 8)), M(0xfb923c, { emissive: 0xf97316, emissiveIntensity: 1.2 }));
-    flame.position.set(0, 0.42, 0); o.head.add(flame); o.flame = flame;
-    o.arms = [limb(inner, r, -0.33, 0.9, 0, 0.14, 0.4, 0.16), limb(inner, r, 0.33, 0.9, 0, 0.14, 0.4, 0.16)];
-    const tail = part(inner, dr, 0, 0.55, -0.3, 0.08, 0.08, 0.4); tail.rotation.x = 0.6;
-    o.h = 1.75;
-  }
-  return o;
-}
+/** Gegner im Stil der eigenen Avatare (gleicher Baukasten), aber feindlich: böse Brauen, Reisszähne, Hüte, Farben */
+const CS3_FOES = [
+  { name: 'Goblin', h: 1.85, look: { skin: 0x7cc45a, eyeC: 0xfacc15, brows: 'angry', mouth: 'fang', hair: 'mohawk', hairC: 0x1f2937, top: 'tank', topC: 0x7c4a1e, topT: 0x3f2a1d, bottom: 'shorts', bottomC: 0x4b5563, shoes: 'boots', shoesC: 0x3f2a1d, shoesC2: 0x1f2937 } },
+  { name: 'Gnom', h: 1.55, look: { skin: 0xf0b48c, eyeC: 0x1e3a8a, brows: 'angry', mouth: 'smirk', hair: 'buzz', hairC: 0xe5e7eb, hat: 'wizard', hatC: 0xdc2626, hatC2: 0xfacc15, top: 'overalls', topC: 0x2563eb, topT: 0xfacc15, bottom: 'jeans', bottomC: 0x1e3a8a, shoes: 'boots', shoesC: 0x7c2d12, shoesC2: 0x3f2a1d } },
+  { name: 'Troll', h: 2.25, look: { skin: 0x8aa0b8, eyeC: 0xef4444, brows: 'angry', mouth: 'fang', hair: 'buzz', hairC: 0x374151, hat: 'viking', hatC: 0x9ca3af, hatC2: 0xfef3c7, top: 'puffer', topC: 0x3f3f46, topT: 0x71717a, bottom: 'cargo', bottomC: 0x57534e, shoes: 'boots', shoesC: 0x292524, shoesC2: 0x1c1917 } },
+  { name: 'Hexe', h: 1.95, look: { skin: 0xb48ad8, eyeC: 0x22c55e, brows: 'angry', mouth: 'smirk', hair: 'long', hairC: 0x111827, hat: 'wizard', hatC: 0x1f2937, hatC2: 0x8b5cf6, top: 'robe', topC: 0x6d28d9, topT: 0xfacc15, bottom: 'leggings', bottomC: 0x111827, shoes: 'boots', shoesC: 0x111827, shoesC2: 0x4c1d95 } },
+  { name: 'Teufelchen', h: 1.75, look: { skin: 0xe0574a, eyeC: 0xfacc15, brows: 'angry', mouth: 'fang', hair: 'spiky', hairC: 0x111827, top: 'hoodie', topC: 0x7f1d1d, topT: 0x111827, bottom: 'joggers', bottomC: 0x111827, shoes: 'sneakers', shoesC: 0x111827, shoesC2: 0xef4444, back: 'dragon', backC: 0x991b1b, backC2: 0xfacc15 } },
+];
 
 async function startCastle3D() {
   const T = await w3Three();
+  await w3LoadEngine();
   Object.assign(game, { picker: gamePicker(), cs: { mons: [], typed: '', spawnT: 1.2, last: 0, id: 0 }, over: false });
   runStart('castle');
+  const key = (k, cls = '') => `<button type="button" class="cs-key ${cls}" data-action="cs-key" data-k="${k}">${k === 'back' ? '⌫' : k === 'ok' ? '✓' : k}</button>`;
   $('#view').innerHTML = gameShell('castle', `
-    ${runHudHTML('bar-hud')}
-    <div class="cs-play">
-    <div class="cs-stage cs3" id="csstage"><div class="cs3-signs" id="cssigns"></div><div class="cs3-flash" id="csflash"></div></div>
-    <div class="cs-input"><span class="cs-typed" id="cstyped">${CS_EMPTY}</span>
-      <div class="cs-pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button type="button" class="cs-key" data-action="cs-key" data-k="${n}">${n}</button>`).join('')}<button type="button" class="cs-key back" data-action="cs-key" data-k="back">⌫</button><button type="button" class="cs-key" data-action="cs-key" data-k="0">0</button><button type="button" class="cs-key ok" data-action="cs-key" data-k="ok">✓</button></div></div>
+    <div class="cs3-full" id="csfull">
+    <div class="cs-stage cs3" id="csstage">
+      <div class="cs3-hud">${runHudHTML('rn-hud')}</div>
+      <div class="cs3-signs" id="cssigns"></div><div class="cs3-flash" id="csflash"></div>
+      <div class="cs3-pad"><span class="cs-typed" id="cstyped">${CS_EMPTY}</span>
+        <div class="cs3-keys">${[1, 2, 3, 4, 5].map((n) => key(n)).join('')}${key('back', 'back')}${[6, 7, 8, 9, 0].map((n) => key(n)).join('')}${key('ok', 'ok')}</div></div>
     </div>
-    <p class="mode-hint">Du stehst auf der Burgmauer. Tippe das Ergebnis eines Monsters ein (Zahlentasten oder Tastatur) – die Kanone feuert, sobald es passt. Erreicht ein Monster die Burg, ${game.run.mode === 'survive' ? 'kostet das ein Leben' : 'ist es weg'}.</p>`);
+    </div>
+    <p class="mode-hint">Du stehst auf der Burgmauer. Tippe das Ergebnis eines Gegners ein (Zahlentasten oder Tastatur) – die Kanone feuert, sobald es passt. Erreicht ein Gegner die Burg, ${game.run.mode === 'survive' ? 'kostet das ein Leben' : 'ist er weg'}.</p>`);
+  // ganzer Bildschirm unter der Kopfzeile fürs Spiel
+  const fitFull = () => { const el = $('#csfull'); if (!el) return; const top = $('.topbar')?.getBoundingClientRect().bottom || 0; el.style.height = `${Math.max(220, window.innerHeight - Math.max(0, top))}px`; };
+  fitFull(); window.scrollTo(0, 0);
+  window.addEventListener('resize', fitFull);
+  game.cleanups = [...(game.cleanups || []), () => window.removeEventListener('resize', fitFull)];
   setGameKeys((e) => {
     if (/^[0-9]$/.test(e.key)) { e.preventDefault(); csKey(e.key); }
     else if (e.key === 'Backspace') { e.preventDefault(); csKey('back'); }
@@ -199,24 +140,37 @@ async function startCastle3D() {
   const sparkMats = [0xfde047, 0xfb923c, 0xef4444, 0xffffff, 0x9ca3af].map((c) => keep(new T.MeshBasicMaterial({ color: c, transparent: true })));
   const flashMat = keep(new T.MeshBasicMaterial({ color: 0xfff3b0, transparent: true, opacity: 0.9 }));
   const fx = []; // fliegende Kugeln, Funken, Blitze
-  const monMats = new Map();
 
   /* ---------- Spiel ---------- */
   const c = game.cs;
-  const KINDS = ['goblin', 'cyclops', 'slime', 'ghost', 'imp'];
   const S = { t: 0, last: performance.now(), shake: 0 };
   const flash = () => { const f = $('#csflash'); if (!f) return; f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); };
+  // Gegner-Figuren: pro Art ein Vorrat, der wiederverwendet wird (Bauen ist aufwendig)
+  const pool = CS3_FOES.map(() => []);
+  const bbox = new T.Box3(), bsize = new T.Vector3();
+  function makeFoe(i) {
+    const F = CS3_FOES[i];
+    const fig = vxFigure(T, a3Look({ ...A3_DEFAULT, ...F.look }));
+    fig.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    bbox.setFromObject(fig.root); bbox.getSize(bsize);
+    const sc = (F.h * 1.45) / Math.max(0.5, bsize.y);
+    const wrapG = new T.Group(); wrapG.add(fig.root); fig.root.scale.setScalar(sc);
+    return { fig, root: wrapG, type: i, h: F.h * 1.45 };
+  }
+  CS3_FOES.forEach((_, i) => pool[i].push(makeFoe(i)));
+  function takeFoe(i) { const f = pool[i].pop() || makeFoe(i); f.root.scale.setScalar(1); f.root.rotation.set(0, 0, 0); f.root.position.y = 0; f.fig.setAnim('run'); f.fig.setRate?.(0.5); return f; }
+  function giveFoe(f) { scene.remove(f.root); pool[f.type].push(f); }
   function spawn() {
     const busy = new Set(c.mons.map((m) => m.t.answer));
     const t = game.picker.pool.some((x) => !busy.has(x.answer)) ? game.picker.next((x) => !busy.has(x.answer)) : game.picker.next();
     const lanes = [0, 1, 2, 3].sort(() => Math.random() - 0.5);
     const lane = lanes.find((l) => !c.mons.some((m) => m.lane === l && m.z < CS3.Z0 + 9)) ?? lanes[0];
     const lv = surviveLevel();
-    const kind = g2Pick(KINDS);
-    const fig = cs3Monster(T, kind, box, monMats);
-    const m = { id: ++c.id, t, lane, kind, fig, z: CS3.Z0, x: 100, v: (5.2 + lv * 0.55) * (0.85 + Math.random() * 0.3), phase: Math.random() * 6, el: document.createElement('div') };
-    fig.root.position.set(CS3.LANES[lane], 0, CS3.Z0); fig.root.scale.setScalar(1.4); fig.h *= 1.4;
-    scene.add(fig.root);
+    const kind = Math.floor(Math.random() * CS3_FOES.length);
+    const foe = takeFoe(kind);
+    const m = { id: ++c.id, t, lane, kind, foe, fig: foe.fig, h: foe.h, z: CS3.Z0, x: 100, v: (5.2 + lv * 0.55) * (0.85 + Math.random() * 0.3), phase: Math.random() * 6, el: document.createElement('div') };
+    foe.root.position.set(CS3.LANES[lane], 0, CS3.Z0);
+    scene.add(foe.root);
     m.el.className = 'cs3-sign';
     m.el.innerHTML = taskHTML(t, '<span class="slot">?</span>');
     signs.appendChild(m.el);
@@ -243,7 +197,8 @@ async function startCastle3D() {
   /* Schuss (wird von csTry aufgerufen, wenn die Eingabe passt) */
   c.r3 = {
     shoot(m) {
-      const target = new T.Vector3(CS3.LANES[m.lane], m.fig.h * 0.6, m.z);
+      const target = new T.Vector3(CS3.LANES[m.lane], m.h * 0.6, m.z);
+      m.fig.setAnim('oops');
       const can = cannons.reduce((a, b) => (Math.abs(b.base.position.x - target.x) < Math.abs(a.base.position.x - target.x) ? b : a));
       const from = new T.Vector3(); can.base.getWorldPosition(from); from.y += 0.4; from.z -= 0.6;
       can.aim = target.clone(); can.kick = 1;
@@ -275,6 +230,7 @@ async function startCastle3D() {
         const speed = m.v * (CS3.Z1 - CS3.Z0) / 86; // gleiche Zeit wie 2D (100 % → 14 %)
         m.z += speed * dt; m.x = 100 - ((m.z - CS3.Z0) / (CS3.Z1 - CS3.Z0)) * 86;
         if (m.z >= CS3.Z1) { // an der Mauer
+          m.fig.setAnim('cheer');
           removeMon(m, 'wall');
           S.shake = 0.5; flash();
           sfx.bad();
@@ -286,12 +242,11 @@ async function startCastle3D() {
     // Figuren bewegen
     const all = [...c.mons, ...fx.filter((f) => f.kind === 'die').map((f) => f.m)];
     for (const m of all) {
-      const f = m.fig, ph = S.t * (m.frozen ? 2 : 7) + m.phase;
-      f.root.position.set(CS3.LANES[m.lane], 0, m.z);
-      if (f.float) { f.inner.position.y = 0.35 + Math.sin(ph * 0.5) * 0.15; f.inner.rotation.z = Math.sin(ph * 0.35) * 0.08; }
-      else if (m.kind === 'slime') { const k = Math.abs(Math.sin(ph * 0.6)); f.inner.position.y = k * 0.45; f.inner.scale.set(1 + (1 - k) * 0.15, 0.85 + k * 0.25, 1 + (1 - k) * 0.15); }
-      else { f.inner.position.y = Math.abs(Math.sin(ph)) * 0.08; f.legs.forEach((l, i) => { l.rotation.x = Math.sin(ph + i * Math.PI) * 0.6; }); f.arms.forEach((a, i) => { a.rotation.x = Math.sin(ph + i * Math.PI + Math.PI) * 0.5; }); }
-      if (f.flame) f.flame.scale.set(1, 0.8 + Math.sin(S.t * 20) * 0.25, 1);
+      const ph = S.t * 1.6 + m.phase;
+      m.foe.root.position.set(CS3.LANES[m.lane] + Math.sin(ph) * 0.12, 0, m.z);
+      m.foe.root.rotation.y = Math.sin(ph) * 0.08;
+      if (!m.dying) m.fig.setRate?.(m.frozen ? 0.2 : 0.42 + m.v * 0.012);
+      m.fig.update(dt);
     }
     // Effekte
     for (let i = fx.length - 1; i >= 0; i--) {
@@ -308,9 +263,10 @@ async function startCastle3D() {
         if (e.t > 0.3) { scene.remove(e.o); fx.splice(i, 1); }
       } else if (e.kind === 'die') {
         const m = e.m, d = m.dying; d.t += dt;
-        if (d.how === 'hit') { m.fig.root.rotation.x = -d.t * 6; m.fig.root.scale.setScalar(Math.max(0.01, 1.4 * (1 - d.t * 2.2))); m.fig.root.position.y = d.t * 3; }
-        else { m.fig.root.scale.setScalar(Math.max(0.01, 1.4 * (1 - d.t * 2.5))); m.fig.root.rotation.y += dt * 12; }
-        if (d.t > 0.5) { scene.remove(m.fig.root); fx.splice(i, 1); }
+        const R0 = m.foe.root;
+        if (d.how === 'hit') { R0.rotation.x = -Math.min(1.3, d.t * 5); R0.position.y = Math.sin(Math.min(1, d.t * 2) * Math.PI) * 1.2; R0.scale.setScalar(Math.max(0.01, 1 - Math.max(0, d.t - 0.25) * 3.5)); }
+        else { R0.scale.setScalar(Math.max(0.01, 1 - Math.max(0, d.t - 0.35) * 4)); R0.position.y = Math.max(0, d.t - 0.35) * 2; }
+        if (d.t > 0.65) { giveFoe(m.foe); fx.splice(i, 1); }
       }
     }
     // Kanonen zielen und rucken zurück
@@ -329,13 +285,13 @@ async function startCastle3D() {
     // Kamera auf der Mauer (wackelt, wenn ein Monster ankommt)
     S.shake = Math.max(0, S.shake - dt * 1.4);
     const sh = S.shake * 0.25;
-    camera.position.set((Math.random() - 0.5) * sh, (portrait ? 7.6 : 6.6) + (Math.random() - 0.5) * sh, portrait ? 2.2 : 1.1);
-    camera.lookAt(0, 0, portrait ? -15 : -16);
+    camera.position.set((Math.random() - 0.5) * sh, (portrait ? 8.2 : 7.4) + (Math.random() - 0.5) * sh, portrait ? 4.6 : 3.6);
+    camera.lookAt(0, 0.5, -14);
     renderer.render(scene, camera);
     // Schilder über den Monstern
     const W = host.clientWidth, H = host.clientHeight;
     for (const m of all) {
-      proj.set(CS3.LANES[m.lane], m.fig.h + (m.fig.float ? 0.55 : 0.25), m.z).project(camera);
+      proj.set(CS3.LANES[m.lane], m.h + 0.3, m.z).project(camera);
       const near = (m.z - CS3.Z0) / (CS3.Z1 - CS3.Z0);
       m.el.style.transform = `translate(${(proj.x * 0.5 + 0.5) * W}px, ${(-proj.y * 0.5 + 0.5) * H}px) translate(-50%, -100%) scale(${0.72 + near * 0.42})`;
       m.el.style.zIndex = Math.round(near * 100);
@@ -348,7 +304,7 @@ async function startCastle3D() {
       ro.disconnect();
       trees.dispose?.(); stems.dispose?.();
       own.forEach((x) => { try { x.dispose?.(); } catch { /* */ } });
-      monMats.forEach((m) => m.dispose());
+      pool.flat().forEach((f) => f.fig.dispose?.()); c.mons.forEach((m) => m.fig.dispose?.());
       try { renderer.dispose(); renderer.forceContextLoss(); } catch { /* */ }
       renderer.domElement.remove();
     },

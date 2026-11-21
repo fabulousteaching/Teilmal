@@ -663,3 +663,27 @@ button.dc-die[data-action]:hover { transform: translateY(-3px); }
 .mz3-pop.bad { background: linear-gradient(135deg, #ef4444, #991b1b); }
 .mz3-pop.on { animation: mz3-pop 1.2s ease forwards; }
 @keyframes mz3-pop { 12% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); } 25% { transform: translate(-50%, -50%) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -120%); } }
+
+/* ---------------- 🏰 Burg verteidigen: Vollbild, Tastenfeld als Steintafel in der Burg ---------------- */
+.view:has(.cs3-full) { padding: 0 !important; max-width: none; }
+.game-castle:has(.cs3-full) { gap: 0; }
+.game-castle:has(.cs3-full) > .mode-bar, .game-castle:has(.cs3-full) > .mode-hint { display: none; }
+.cs3-full { position: relative; width: 100%; height: calc(100dvh - 64px); }
+.cs3-full .cs-stage { width: 100%; height: 100% !important; min-height: 0; border-radius: 0; }
+.cs3-hud { position: absolute; left: 10px; top: 10px; z-index: 7; pointer-events: none; }
+.cs3-hud .run-hud { padding: 5px 12px; border-radius: 99px; background: rgba(255, 255, 255, .92); box-shadow: 0 6px 18px -10px rgba(0, 0, 0, .5); }
+.cs3-pad { position: absolute; left: 50%; bottom: max(10px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 8; display: grid; justify-items: center; gap: 7px;
+  width: min(560px, calc(100% - 16px)); padding: 10px 12px 12px; border-radius: 18px;
+  background: linear-gradient(rgba(70, 76, 88, .28) 2px, transparent 2px) 0 0 / 100% 18px, linear-gradient(90deg, rgba(70, 76, 88, .28) 2px, transparent 2px) 0 0 / 34px 18px, linear-gradient(180deg, #b8bcc4, #8f949e);
+  border: 3px solid #6b7280; box-shadow: 0 14px 30px -14px rgba(0, 0, 0, .7), inset 0 2px 0 rgba(255, 255, 255, .35); }
+.cs3-pad .cs-typed { min-width: 150px; padding: 2px 16px; font-size: 1.7rem; background: #fffdf7; }
+.cs3-keys { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; width: 100%; }
+.cs3-keys .cs-key { height: clamp(40px, 6.4vh, 56px); font-size: clamp(1.2rem, 3.4vh, 1.6rem); background: #fffaf0; box-shadow: inset 0 -4px 0 #d6cbb6, 0 3px 6px -3px rgba(0, 0, 0, .5); }
+.cs3-keys .cs-key.ok { background: var(--c); color: #fff; box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .25); }
+.cs3-keys .cs-key.back { background: #e7e1d4; }
+@media (max-height: 560px) and (orientation: landscape) {
+  .cs3-full { height: calc(100dvh - 54px); }
+  .cs3-pad { width: min(440px, 62vw); padding: 6px 8px 8px; gap: 4px; }
+  .cs3-pad .cs-typed { font-size: 1.25rem; min-width: 110px; padding: 0 12px; }
+  .cs3-keys .cs-key { height: 34px; font-size: 1.1rem; }
+}
