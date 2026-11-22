@@ -466,6 +466,8 @@ const snd = {
   horn(low = false, delay = 0) { this.at(delay, (ac, t) => { const f = low ? 82 : 110; [f, f * 1.5].forEach((fr) => this.osc(ac, t, { type: 'sawtooth', f0: fr, f1: fr * 0.98, peak: 0.07, a: 0.08, d: 1.0, lp: 700 })); }); },
   /** Möwe */
   gull(delay = 0) { this.at(delay, (ac, t) => { for (let i = 0; i < 3; i++) { const st = t + i * 0.2; this.osc(ac, st, { type: 'triangle', f0: 1500, f1: 2300, peak: 0.025, a: 0.03, d: 0.06 }); this.osc(ac, st + 0.08, { type: 'triangle', f0: 2200, f1: 1200, peak: 0.022, a: 0.01, d: 0.1 }); } }); },
+  /** Würfel schlägt auf (k = Stärke 0–1) */
+  clack(k = 1, delay = 0) { this.at(delay, (ac, t) => { this.hiss(ac, t, { type: 'bandpass', f0: 2600, q: 2.5, peak: 0.14 * k, a: 0.002, d: 0.045 }); this.osc(ac, t, { type: 'triangle', f0: 900 + Math.random() * 300, f1: 700, peak: 0.07 * k, a: 0.002, d: 0.05 }); }); },
   /** Holz-Klonk (Schiff setzen) */
   clunk(delay = 0) { this.at(delay, (ac, t) => { this.osc(ac, t, { type: 'triangle', f0: 260, f1: 180, peak: 0.16, a: 0.003, d: 0.12 }); this.hiss(ac, t, { type: 'bandpass', f0: 900, q: 3, peak: 0.08, a: 0.002, d: 0.05 }); }); },
   /** leises Meeresrauschen im Hintergrund; liefert eine Stopp-Funktion */

@@ -390,9 +390,9 @@ button.sh-cell:not(:disabled):hover { background: rgba(255, 255, 255, .34); tran
 .dc-target b { margin-top: -14px; font: 800 2.9rem var(--font-display); font-variant-numeric: tabular-nums; }
 .dc-target.pop { animation: dc-pop .5s ease; }
 @keyframes dc-pop { 0% { transform: scale(.5) rotate(-20deg); } 70% { transform: scale(1.12); } }
-.dc-table { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: 100%; max-width: 560px; margin: 0 auto; }
-.dc-side { padding: 12px 10px 14px; border-radius: 22px; text-align: center; background: radial-gradient(circle at 50% 20%, rgba(255, 255, 255, .14), transparent 60%), linear-gradient(160deg, #15803d, #14532d); color: #fff; box-shadow: inset 0 0 0 3px rgba(0, 0, 0, .15), var(--shadow-card); }
-.dc-side.cpu { background: radial-gradient(circle at 50% 20%, rgba(255, 255, 255, .12), transparent 60%), linear-gradient(160deg, #475569, #1e293b); }
+.dc-table { display: grid; grid-template-columns: 1fr; gap: 0; width: 100%; max-width: 560px; margin: 0 auto; padding: 10px 12px; border-radius: 26px; background: radial-gradient(ellipse at 50% 45%, #22a05a, #13723d 75%); outline: 3px dashed rgba(255, 255, 255, .45); outline-offset: -12px; box-shadow: 0 18px 30px -18px rgba(0, 0, 0, .55); color: #fff; }
+.dc-side { padding: 10px 10px 12px; text-align: center; color: #fff; }
+.dc-side.cpu { border-bottom: 2px dashed rgba(255, 255, 255, .3); }
 .dc-side .label { color: rgba(255, 255, 255, .8); margin: 0 0 8px; }
 .dc-dice { display: flex; justify-content: center; gap: 14px; min-height: 76px; }
 .dc-die { display: grid; place-items: center; width: 72px; height: 72px; padding: 0; border: 0; border-radius: 18px; background: linear-gradient(160deg, #fff, #e5e7eb); color: #111827; font: 800 2.1rem var(--font-display); font-variant-numeric: tabular-nums; box-shadow: inset 0 -5px 0 rgba(0, 0, 0, .15), 0 8px 14px -6px rgba(0, 0, 0, .6); }
@@ -617,7 +617,7 @@ button.dc-die[data-action]:hover { transform: translateY(-3px); }
 /* ---------------- 🎲 Würfel-Duell: 3D-Würfel, Anleitung, Zahlenstrahl ---------------- */
 .d3 { --s: 72px; --tilt: rotateX(-12deg) rotateY(16deg); position: relative; display: grid; justify-items: center; gap: 2px; width: calc(var(--s) + 8px); padding: 0; border: 0; background: none; color: inherit; perspective: 520px; }
 .d3-cube { position: relative; width: var(--s); height: var(--s); transform-style: preserve-3d; transform: var(--tilt); }
-.d3-cube span { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 18px; font: 800 calc(var(--s) * .44) var(--font-display); font-variant-numeric: tabular-nums; backface-visibility: hidden;
+.d3-cube span { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 9px; font: 800 calc(var(--s) * .44) var(--font-display); font-variant-numeric: tabular-nums; backface-visibility: hidden;
   box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .05), inset 0 -7px 14px rgba(0, 0, 0, .14), inset 0 7px 12px rgba(255, 255, 255, .75); }
 .d3.num .d3-cube span { background: linear-gradient(145deg, #ffffff, #dbe3ee); color: #0f172a; }
 .d3.row .d3-cube span { background: linear-gradient(145deg, #fb7185, #be123c); color: #fff; text-shadow: 0 2px 6px rgba(0, 0, 0, .25); box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .08), inset 0 -7px 14px rgba(0, 0, 0, .22), inset 0 7px 12px rgba(255, 255, 255, .35); }
@@ -629,11 +629,11 @@ button.dc-die[data-action]:hover { transform: translateY(-3px); }
 .d3-cube .f6 { transform: rotateX(-90deg) translateZ(calc(var(--s) / 2)); }
 .d3-shadow { position: absolute; left: 6%; right: 6%; top: calc(var(--s) - 2px); height: 14px; border-radius: 50%; background: radial-gradient(rgba(0, 0, 0, .4), transparent 70%); z-index: -1; }
 .d3 small { margin-top: 12px; font-size: .6rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; opacity: .8; }
-.d3.idle .d3-cube { animation: d3-idle 3.2s ease-in-out infinite; }
+.d3.idle .d3-cube { animation: none; }
 .d3.idle .d3-cube span { filter: grayscale(.6) brightness(.95); opacity: .7; }
 @keyframes d3-idle { 0%, 100% { transform: var(--tilt); } 50% { transform: rotateX(-24deg) rotateY(38deg); } }
 .d3.pick { cursor: pointer; touch-action: manipulation; }
-.d3.pick .d3-cube { animation: d3-wiggle 2s ease-in-out 1.2s infinite; }
+.d3.pick .d3-cube { animation: none; }
 .d3.pick:hover .d3-cube { transform: var(--tilt) translateY(-4px); }
 .d3.pick::after { content: '🔄'; position: absolute; top: -8px; right: -10px; font-size: .95rem; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .4)); }
 @keyframes d3-wiggle { 0%, 80%, 100% { transform: var(--tilt); } 86% { transform: var(--tilt) rotateZ(-9deg); } 93% { transform: var(--tilt) rotateZ(9deg); } }
@@ -720,3 +720,32 @@ button.dc-die[data-action]:hover { transform: translateY(-3px); }
 .mz3-pa { position: relative; padding: 8px 4px; border: 0; border-radius: 14px; background: #fff7ed; color: #431407; font: 800 1.4rem var(--font-display); cursor: pointer; touch-action: manipulation; box-shadow: inset 0 -4px 0 #fdba74; }
 .mz3-pa small { position: absolute; left: 7px; top: 3px; font: 600 .6rem var(--font-body, sans-serif); color: #9a3412; }
 @media (max-width: 600px) { .mz3-pit { bottom: 150px; } }
+
+/* Würfel-Duell 3D: eine Filzmatte, auf der echte Würfel rollen (js/dice3d.js) */
+.dc-mat3 { grid-area: table; position: relative; width: 100%; max-width: 860px; height: auto; aspect-ratio: 1.5; max-height: clamp(240px, calc(100dvh - 420px), 640px); min-height: 220px; margin: 2px auto 0; color: #fff; touch-action: manipulation; }
+.dc3-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.dc-mat3 .dc-lab, .dc-mat3 .dc-res { position: absolute; z-index: 2; padding: 4px 11px; border-radius: 14px; background: rgba(6, 50, 26, .55); backdrop-filter: blur(3px); font-weight: 800; pointer-events: none; }
+.dc-mat3 .dc-lab { font-size: .78rem; letter-spacing: .04em; }
+.dc-mat3 .dc-res { min-height: 0; margin: 0; text-align: center; }
+.dc-mat3 .dc-res:empty { display: none; }
+.dc-mat3 .dc-res b { display: inline; font-size: 1.45rem; line-height: 1.1; }
+.dc-mat3 .dc-res small { display: inline; margin-left: 6px; font-size: .78rem; opacity: .9; }
+.dc-mat3 .dc-res small:last-of-type { display: none; } /* Abstand zeigt der Zahlenstrahl */
+.dc-mat3 .dc-res b.bust + small { display: inline; }
+.dc-chips { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.dc-rr { position: absolute; left: 0; top: 0; padding: 5px 10px; border: 0; border-radius: 999px; background: #fef08a; color: #713f12; font: 800 .78rem var(--font-body, sans-serif); box-shadow: 0 6px 14px -6px rgba(0, 0, 0, .6); pointer-events: auto; cursor: pointer; touch-action: manipulation; white-space: nowrap; }
+.dc-rr:hover { background: #fde047; }
+@media (max-width: 520px) { .dc-mat3 { aspect-ratio: 1.25; max-height: clamp(240px, calc(100dvh - 450px), 520px); } .dc-mat3 .dc-res { padding: 3px 9px; } .dc-mat3 .dc-res b { font-size: 1.15rem; } .dc-mat3 .dc-res small { font-size: .66rem; } .dc-mat3 .dc-lab { font-size: .66rem; } }
+@media (max-height: 560px) and (orientation: landscape) { .dc-mat3 { grid-area: table; aspect-ratio: auto; max-height: none; height: calc(100dvh - 150px); min-height: 200px; } }
+.dc-mat3 .dc-target { position: absolute; z-index: 2; width: clamp(64px, 11vmin, 104px); height: clamp(64px, 11vmin, 104px); margin: 0; transform: translate(-50%, -50%); pointer-events: none; }
+.dc-mat3 .dc-target b { font-size: clamp(1.5rem, 4.4vmin, 2.5rem); margin-top: -8px; }
+.dc-mat3 .dc-target small { margin-top: 8px; font-size: .55rem; }
+.dc-mat3 .dc-target.pop { animation: dc-pop3 .5s ease; }
+@keyframes dc-pop3 { 0% { transform: translate(-50%, -50%) scale(.5) rotate(-20deg); } 70% { transform: translate(-50%, -50%) scale(1.12); } 100% { transform: translate(-50%, -50%); } }
+/* breite Bildschirme (PC, Tablet quer): Matte links gross, Steuerung rechts */
+@media (min-aspect-ratio: 6/5) and (min-width: 900px) and (min-height: 561px) {
+  .game-dice .dc-play:has(.dc-mat3) { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr); grid-template-areas: "table score" "table ctrl"; grid-template-rows: auto 1fr; column-gap: 18px; align-items: start; }
+  .game-dice .dc-play:has(.dc-mat3) .dc-score { grid-area: score; margin-top: 4px; }
+  .game-dice .dc-play:has(.dc-mat3) .dc-ctrl { grid-area: ctrl; margin-top: 4px; }
+  .game-dice .dc-mat3 { max-width: none; aspect-ratio: auto; max-height: none; height: clamp(320px, calc(100dvh - 200px), 760px); }
+}

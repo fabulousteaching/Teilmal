@@ -1185,17 +1185,21 @@ function dcHelpHTML() {
     <ol>${DC_STEPS.map(([e, h, t], i) => `<li><span class="dc-step">${i + 1}</span><span class="dc-emo">${e}</span><div><b>${h}</b><small>${t}</small></div></li>`).join('')}</ol>
     <button type="button" class="btn primary big" data-action="dc-help-close">Los geht's!</button></div></div>`;
 }
-function startDice() {
+function startDice(opts = {}) {
   const rows = practiceSettings().reihen.slice();
   Object.assign(game, { dc: { rows, pts: [0, 0], round: 0, phase: 'roll', me: null, cpu: null, rerolled: false, target: 0, ok: 0, wrong: 0, t: null, typing: g2Typing(), typed: '' }, over: false });
   $('#view').innerHTML = gameShell('dice', `
     <div class="dc-play">
     <div class="dc-score"><span class="dc-p me">Du <b id="dcme">0</b></span><span class="dc-vs">bis ${DC_WIN}</span><span class="dc-p cpu"><b id="dccpu">0</b> Robo 🤖</span><button type="button" class="dc-q" data-action="dc-help" aria-label="So geht's">?</button></div>
-    <div class="dc-target"><small>Zielzahl</small><b id="dctarget">?</b></div>
-    <div class="dc-table">
-      <div class="dc-side me"><p class="label">Deine Würfel</p><div class="dc-dice" id="dcmine"></div><div class="dc-res" id="dcmeres"></div></div>
+    ${opts.three ? '' : '<div class="dc-target"><small>Zielzahl</small><b id="dctarget">?</b></div>'}
+    ${opts.three ? `<div class="dc-mat3" id="dcmat"><div class="dc-target"><small>Ziel</small><b id="dctarget">?</b></div>
+      <span class="dc-lab cpu">Robo 🤖</span><div class="dc-res cpu" id="dccpures"></div>
+      <span class="dc-lab me">Du</span><div class="dc-res me" id="dcmeres"></div>
+      <div class="dc-chips" id="dcmine"></div><div id="dccpud" hidden></div>
+    </div>` : `<div class="dc-table">
       <div class="dc-side cpu"><p class="label">Robo 🤖</p><div class="dc-dice" id="dccpud"></div><div class="dc-res" id="dccpures"></div></div>
-    </div>
+      <div class="dc-side me"><p class="label">Deine Würfel</p><div class="dc-dice" id="dcmine"></div><div class="dc-res" id="dcmeres"></div></div>
+    </div>`}
     <div class="dc-ctrl" id="dcctrl"></div>
     </div>
     <p class="mode-hint">Würfle, dann entscheide: behalten oder einen Würfel nochmals werfen (tippe ihn an). Rechne dein Produkt richtig aus – wer näher an der Zielzahl ist, gewinnt die Runde. Der ?-Knopf zeigt die Anleitung.</p>`);
@@ -1208,6 +1212,7 @@ function startDice() {
       else if (e.key === 'Enter') { e.preventDefault(); game.typeKey?.('ok'); }
     } else if ((e.key === ' ' || e.key === 'Enter') && d.phase === 'roll' && !$('#dchelp')) { e.preventDefault(); dcDoRoll(); }
   });
+  if (opts.three) dc3Mount(opts.three, $('#dcmat'));
   dcRound();
   if (!db.settings.dcHelpSeen) dcHelp(true);
 }
@@ -1227,6 +1232,7 @@ function dcDieHTML(v, kind, opts = {}) {
 }
 /** Würfel anzeigen; roll: Liste der Würfel (Index), die gerade geworfen werden */
 function dcShow(el, dice, roll = [0, 1], pick = false) {
+  if (game.dc?.r3) { game.dc.r3.show(el === '#dcmine' ? 0 : 1, dice, roll, pick); return; } // 3D: js/dice3d.js
   const host = $(el);
   if (!host) return;
   host.innerHTML = dice.map((v, i) => dcDieHTML(v, i ? 'row' : 'num', { pick, i })).join('');
@@ -1263,7 +1269,7 @@ function dcDoRoll() {
   const d = game.dc;
   if (d.phase !== 'roll') return;
   d.me = dcRoll(); d.phase = 'decide';
-  tone([440, 520, 620], 0.05, 'square', 0.03);
+  if (!d.r3) tone([440, 520, 620], 0.05, 'square', 0.03);
   dcShow('#dcmine', d.me, [0, 1], true);
   $('#dcctrl').innerHTML = `${dcStep(2, `Gefällt dir ein Würfel nicht? <b>Tippe ihn an</b> – er wird einmal neu geworfen. Sonst:`)}<button type="button" class="btn primary big" data-action="dc-keep">✓ Behalten</button>`;
 }
@@ -1272,7 +1278,7 @@ function dcReroll(i) {
   if (d.phase !== 'decide' || d.rerolled) return;
   d.rerolled = true;
   d.me[i] = i === 1 ? g2Pick(d.rows) : 1 + Math.floor(Math.random() * 10);
-  tone([520, 620], 0.05, 'square', 0.03);
+  if (!d.r3) tone([520, 620], 0.05, 'square', 0.03);
   dcShow('#dcmine', d.me, [i], false);
   gLater(dcAsk, 900);
 }
@@ -1283,6 +1289,7 @@ function dcAsk() {
   const t = makeTask(d.me[0], d.me[1], 'mul');
   t.shownAt = performance.now(); d.t = t;
   $$('#dcmine .d3').forEach((x) => { x.classList.remove('pick'); x.removeAttribute('data-action'); });
+  d.r3?.pick(false);
   const vals = d.typing ? [] : choicesFor(t, 4);
   $('#dcctrl').innerHTML = `${dcStep(3, 'Rechne aus: Wie viel ist das?')}<div class="task">${taskHTML(t, '<span class="slot">?</span>')}</div>
     ${d.typing ? g2TypeHTML('dctyped') : `<div class="dc-ans">${vals.map((v) => `<button type="button" class="dc-a" data-action="dc-answer" data-v="${v}">${v}</button>`).join('')}</div>`}`;
