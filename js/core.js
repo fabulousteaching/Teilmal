@@ -285,10 +285,13 @@ function wakeUpDue(prog = db.prog) {
 }
 
 /**
- * Wählt die nächste Aufgabe.
- * – Fällige Rechnungen (Abstand erreicht) zuerst, die schwierigsten bevorzugt
- * – Dieselbe Rechnung (auch als Tauschaufgabe) nie in den letzten 3–4 Aufgaben
- * – sonst neue Rechnungen oder zufällig, Schwieriges häufiger
+ * Wählt die nächste Aufgabe – wie eine Lernkartei (gilt für alle Übungen und alle Spiele):
+ * – Fällige Rechnungen zuerst (ihr Abstand ist erreicht); aus dem vordersten Fach zuerst, darin die schwierigsten.
+ *   Falsch beantwortete liegen im vordersten Fach und sind nach 3–5 anderen Aufgaben wieder fällig.
+ * – Ist nichts fällig: neue Rechnungen, die noch nie dran waren.
+ * – Ist auch nichts neu: die Rechnung, die als nächste fällig wird (vordere Fächer zuerst).
+ *   Gut gelernte Rechnungen in den hinteren Fächern kommen also erst wieder, wenn ihre Zeit da ist.
+ * – Dieselbe Rechnung (auch als Tauschaufgabe) nie in den letzten 3–4 Aufgaben.
  */
 function createPicker(pool) {
   wakeUpDue();
@@ -298,6 +301,7 @@ function createPicker(pool) {
     pool: tasks,
     next(filter) {
       const p = db.prog;
+      const st = (t) => p.f[t.key];
       const list = filter ? tasks.filter(filter) : tasks;
       const facts = new Set(list.map((t) => t.fact));
       const gap = Math.min(4, Math.max(0, facts.size - 2));
@@ -305,15 +309,21 @@ function createPicker(pool) {
       let cand = list.filter((t) => !avoid.has(t.fact));
       if (!cand.length) cand = list.filter((t) => t.fact !== recent[recent.length - 1]);
       if (!cand.length) cand = list;
-      const due = cand.filter((t) => p.f[t.key] && p.f[t.key].d <= p.q);
+      const due = cand.filter((t) => st(t) && st(t).d <= p.q);
+      const fresh = cand.filter((t) => !st(t));
+      const urgency = (t) => difficulty(st(t)) + (p.q - st(t).d) / 60;
       let t;
-      if (due.length && Math.random() < 0.85) {
-        due.sort((x, y) => (difficulty(p.f[y.key]) + (p.q - p.f[y.key].d) / 60) - (difficulty(p.f[x.key]) + (p.q - p.f[x.key].d) / 60));
-        t = pick(due.slice(0, Math.min(3, due.length)));
+      if (due.length && (!fresh.length || Math.random() < 0.8)) {
+        // fällig: vorderstes Fach zuerst, darin die schwierigsten und am längsten fälligen
+        due.sort((x, y) => (st(x).b - st(y).b) || (urgency(y) - urgency(x)));
+        const front = due.filter((x) => st(x).b === st(due[0]).b);
+        t = pick(front.slice(0, Math.min(3, front.length)));
+      } else if (fresh.length) {
+        t = pick(fresh);
       } else {
-        const fresh = cand.filter((x) => !p.f[x.key]);
-        if (fresh.length && Math.random() < 0.55) t = pick(fresh);
-        else t = weightedPick(cand, (x) => 1 + 5 * difficulty(p.f[x.key]) + (p.f[x.key] ? 0 : 1.5));
+        // nichts fällig und nichts neu: was als nächstes fällig wird
+        const soon = [...cand].sort((x, y) => (st(x).d - st(y).d) || (st(x).b - st(y).b));
+        t = pick(soon.slice(0, Math.min(2, soon.length)));
       }
       recent.push(t.fact);
       if (recent.length > 12) recent.shift();

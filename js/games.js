@@ -1198,7 +1198,7 @@ function memFlip(btn) {
   if (d.kind === c.kind) { other.classList.remove('sel'); game.sel = i; return; } // zwei Rechnungen: neue Wahl
   const match = c.id === d.id;
   const task = c.kind === 'task' ? c.t : d.t, val = c.kind === 'res' ? c.t.answer : d.t.answer;
-  recordAnswer(task, val, performance.now() - game.lastFound);
+  recordAnswer(task, val, Math.min(5000, performance.now() - game.lastFound)); // Suchzeit ist keine Rechenzeit
   if (match) {
     c.done = d.done = true;
     game.combo++;

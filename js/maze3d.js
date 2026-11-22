@@ -595,7 +595,7 @@ async function startMaze3D() {
   }
   function passDoor(e) {
     const g = e.g, t = g.q.t;
-    recordAnswer(t, e.v, performance.now() - g.q.at);
+    recordAnswer(t, e.v, Math.min(5000, performance.now() - g.q.at)); // Gehzeit zum Tor ist keine Rechenzeit
     stopClock();
     if (e.ok) {
       g.solved = true; S.gi = g.k + 1;

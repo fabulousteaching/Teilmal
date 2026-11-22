@@ -8,12 +8,17 @@ Alle Übungen und Spiele gehen **ohne Anmeldung**. Mit Anmeldung gibt es Klassen
 
 Teilmal merkt sich für jede Rechnung, wie oft sie geübt wurde, wie oft sie falsch war, wie schnell die Antwort kam und welche falschen Antworten das Kind gegeben hat (z. B. „54 statt 56“). Daraus wählt es die nächste Aufgabe – in **allen** Übungen und Spielen:
 
-- **Falsch** → die Rechnung kommt nach **3–5 anderen Aufgaben** wieder, nie direkt hintereinander.
-- **Richtig** → sie rückt einen Kasten weiter (wie bei einer Lernkartei), der Abstand wächst: 4, 9, 18, 35, 70, 140 Aufgaben.
+Das funktioniert wie eine **Lernkartei mit Fächern** (Vergessenskurve):
+
+- **Falsch** → die Rechnung bleibt im **vordersten Fach** und kommt nach **3–5 anderen Aufgaben** wieder, nie direkt hintereinander.
+- **Richtig** → sie rückt **ein Fach weiter nach hinten**, und der Abstand wächst: 4, 9, 18, 35, 70, 140 Aufgaben. So lange kommt sie nicht mehr – dafür kommen die anderen Rechnungen dran.
+- **Welche Rechnung als Nächstes kommt**: zuerst die fälligen (ihr Abstand ist erreicht), und zwar aus dem vordersten Fach zuerst; ist nichts fällig, eine neue Rechnung, die noch nie dran war; ist auch nichts neu, die Rechnung, die als nächste fällig wird. Gut gelernte Rechnungen aus den hinteren Fächern kommen also nicht zufällig zu früh wieder.
 - **Richtig, aber langsam** (über 6 Sekunden) → sie bleibt weit unten und kommt bald wieder. Ziel ist das Automatisieren.
 - Auf Anhieb schnell gewusst → kommt erst viel später wieder.
 - Dieselbe Rechnung und ihre Tauschaufgabe (7 · 8 und 8 · 7) kommen nie innerhalb von 4 Aufgaben.
 - Wer am nächsten Tag weiterübt, bekommt die Rechnungen, die noch Mühe machen, gleich zu Beginn nochmals.
+- **Die Spiele zählen genauso wie die Übungen.** Jede Antwort in einem Spiel wandert in dieselbe Kartei: Elfmeter, Meteoriten, Frosch, Zielscheibe, Stimmt das?, Memory, Turbo-Rennen, Welten-Lauf, Rechen-Labyrinth (Tore und Löcher), Turmbau, Zahlen-Schlange, 1×1-Tafel-Puzzle, Burg verteidigen (abgewehrt = richtig, Gegner an der Mauer = nicht gewusst), Schiffe versenken, Würfel-Duell und die Live-Spiele (Bingo, Wettrennen, Bauprojekt). Die Spiele holen ihre Rechnungen auch aus der Kartei (fällige zuerst); beim Tafel-Puzzle werden fällige Felder bevorzugt leer gelassen. Bei Schiffe versenken (das Kind wählt das Feld) und beim Würfel-Duell (die Würfel entscheiden) bestimmt das Spiel die Rechnung – die Antwort zählt trotzdem. Nur das **Duell zu zweit** zählt nicht, weil dort zwei Kinder auf einem Gerät spielen.
+- Damit eine richtige Antwort im Spiel auch wirklich ein Fach weiterrückt, zählt nur die Rechenzeit: Lenk-, Geh- und Suchzeit (Schlange, Labyrinth, Memory) und die Zeit, bis ein Gegner aus dem Lager kommt, werden nicht als langsames Rechnen gewertet.
 - Bei den Auswahl-Spielen sind die falschen Antworten bewusst die typischen Verwechslungen (Nachbaraufgaben, ±1, vertauschte Ziffern) – und die eigenen früheren Fehler des Kindes.
 
 ## Was geübt wird

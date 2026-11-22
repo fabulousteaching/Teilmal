@@ -197,6 +197,7 @@ function mzStep(i) {
   el.classList.add('visited');
   if (c.kind === 'num' && !c.seen) {
     c.seen = true;
+    try { recordAnswer(makeTask(c.k, m.r, 'mul'), c.v, 4000); } catch { /* */ }
     sfx.good();
     mzFloat([x, y], `${c.k} ${SIGN()} ${m.r} = <b>${c.v}</b>`, 'good');
     if (runRight()) return;
@@ -555,7 +556,7 @@ function snStep(dt) {
     const f = s.foods[i];
     if (Math.hypot(f.x - s.x, f.y - s.y) > SN.R + 22) continue;
     const t = s.t;
-    recordAnswer(t, f.v, performance.now() - t.shownAt);
+    recordAnswer(t, f.v, Math.min(5000, performance.now() - t.shownAt)); // Lenkzeit ist keine Rechenzeit
     snBurst(f.x, f.y, f.ok ? ['#fde047', '#86efac', '#ffffff', s.skin.a] : ['#fca5a5', '#f87171', '#ffffff'], f.ok ? 26 : 14);
     if (f.ok) {
       sfx.good();
@@ -709,6 +710,8 @@ function startPuzzle() {
     if (r === 1 || c === 1) w *= 0.15; else if (r === 10 || c === 10) w *= 0.4;
     const lv = typeof levelOf === 'function' ? levelOf(db.prog.f[`${c}x${r}`]) : 'none';
     if (lv === 'weak' || lv === 'shaky') w *= 2;
+    const fs = db.prog.f[`${c}x${r}`]; // Karteikasten: fällig → oft, hinteres Fach und noch nicht fällig → selten
+    if (fs && fs.d <= db.prog.q) w *= 3; else if (fs && fs.b >= 3) w *= 0.3; else if (!fs) w *= 1.5;
     cand.push({ r, c, w });
   }
   const miss = [];

@@ -543,7 +543,7 @@ function playerMsg(m) {
   if (m.t === 'bingo-new') { bingoNewCard(m.round, m.size, m.vals); s.phase = 'bingo'; s.n = 0; s.task = null; renderLive(); return; }
   if (m.t === 'lobby') { Object.assign(s, { phase: 'wait', card: null, result: null }); renderLive(); return; }
   if (m.t === 'call') {
-    s.n = m.n; s.task = m.task;
+    s.n = m.n; s.task = m.task; s.taskAt = performance.now();
     const el = $('#bg-now');
     if (el) { el.outerHTML = playerTaskHTML(); const t = $('#bg-now'); t?.classList.add('pop'); } else renderLive();
     tone([660], 0.06, 'sine', 0.04);
@@ -685,7 +685,11 @@ const liveActions = {
   'bingo-mark': (el) => {
     const s = LV.st, i = +el.dataset.i;
     if (!s.card || s.card[i] === 0) return;
-    if (s.marked.has(i)) s.marked.delete(i); else s.marked.add(i);
+    if (s.marked.has(i)) s.marked.delete(i); else {
+      s.marked.add(i);
+      // Karteikasten: das Ergebnis der aktuellen Rechnung gefunden → zählt als richtig gelöst (einmal pro Rechnung)
+      if (s.task && s.card[i] === s.task.a * s.task.b && s.recN !== s.n) { s.recN = s.n; try { recordAnswer(makeTask(s.task.a, s.task.b, 'mul'), s.card[i], Math.min(8000, performance.now() - (s.taskAt || performance.now()))); } catch { /* */ } }
+    }
     s.result = null;
     tone([s.marked.has(i) ? 880 : 520], 0.04, 'sine', 0.04);
     renderLive();

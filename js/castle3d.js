@@ -381,7 +381,7 @@ async function startCastle3D() {
         const speed = m.v * (CS3.Z1 - CS3.Z0) / 86; // gleiche Zeit wie 2D (100 % → 14 %)
         m.z += (m.z < CS3.Z0 ? Math.max(speed * 1.6, 4) : speed) * dt; m.x = 100 - ((m.z - CS3.Z0) / (CS3.Z1 - CS3.Z0)) * 86;
         m.foe.root.visible = m.z > CS3.GATE - 1.6;
-        if (!m.out && m.z > CS3.GATE + 0.9) { m.out = true; m.el.classList.remove('hide'); }
+        if (!m.out && m.z > CS3.GATE + 0.9) { m.out = true; m.el.classList.remove('hide'); m.t.shownAt = performance.now(); }
         if (m.targeted && m.z > CS3.Z1 - 0.3) { m.z = CS3.Z1 - 0.3; continue; }
         if (m.z >= CS3.Z1) { // an der Mauer
           m.fig.setAnim('cheer'); CS3_SND.wall();
