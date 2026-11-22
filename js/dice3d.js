@@ -23,27 +23,29 @@ function dc3RoundBox(T, size, rad, seg = 5) {
 }
 
 function dc3Mount(T, host) {
-  const renderer = new T.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+  const renderer = new T.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.outputColorSpace = T.SRGBColorSpace; renderer.toneMapping = T.NeutralToneMapping;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
-  renderer.setClearColor(0x000000, 0);
+  renderer.setClearColor(0x4a3322, 1);
   renderer.domElement.className = 'dc3-canvas';
   host.prepend(renderer.domElement);
   const scene = new T.Scene();
   const camera = new T.PerspectiveCamera(32, 1, 0.5, 100);
   const own = [], keep = (x) => { own.push(x); return x; };
   const cv = (w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); return c; };
-  scene.add(new T.HemisphereLight(0xffffff, 0x334155, 1.25));
-  const sun = new T.DirectionalLight(0xfff6e8, 2.3); sun.position.set(-4, 11, 5); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
-  Object.assign(sun.shadow.camera, { left: -7, right: 7, top: 6, bottom: -6, near: 1, far: 30 }); sun.shadow.bias = -0.0006; sun.shadow.radius = 4;
+  scene.add(new T.HemisphereLight(0xfff4e6, 0x4a3322, 1.15));
+  const sun = new T.DirectionalLight(0xfff1dc, 2.2); sun.position.set(-4, 12, 5); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -11, right: 11, top: 10, bottom: -10, near: 1, far: 34 }); sun.shadow.bias = -0.0006; sun.shadow.radius = 4;
   scene.add(sun);
+  const lamp = new T.PointLight(0xffd6a0, 22, 26, 1.6); lamp.position.set(0, 8.5, 0.6); scene.add(lamp); // warme Tischlampe
 
   /* ---------- Spielmatte (Filz, liegt auf der Seite – kein Kasten); quer für breite, hoch für schmale Flächen ---------- */
   const RR = 0.75;
   const LAYOUTS = {
-    land: { W: 10, D: 6.6, z: [1.6, -1.55], x: [-1.5, 0.35] },
-    port: { W: 6.8, D: 9.6, z: [2.0, -1.8], x: [-1.2, 0.25] },
+    land: { W: 12, D: 7.8, z: [1.95, -1.85], x: [-2.1, 0.2] },
+    port: { W: 7.8, D: 11, z: [2.6, -2.35], x: [-1.55, 0.4] },
+    square: { W: 9.6, D: 8.4, z: [2.1, -1.95], x: [-1.85, 0.2] }, // fast quadratische Fläche (Handy hoch)
   };
   function makeMat(L, cw, ch) {
     const { W, D } = L, shape = new T.Shape();
@@ -66,12 +68,50 @@ function dc3Mount(T, host) {
     m.receiveShadow = true; m.castShadow = true; m.visible = false; scene.add(m);
     return m;
   }
-  LAYOUTS.land.mesh = makeMat(LAYOUTS.land, 1024, 676);
-  LAYOUTS.port.mesh = makeMat(LAYOUTS.port, 724, 1024);
+  LAYOUTS.land.mesh = makeMat(LAYOUTS.land, 1024, 666);
+  LAYOUTS.port.mesh = makeMat(LAYOUTS.port, 726, 1024);
+  LAYOUTS.square.mesh = makeMat(LAYOUTS.square, 1024, 896);
   let L = LAYOUTS.land;
-  // weicher Schatten der Matte auf der Seite
-  const catcher = new T.Mesh(keep(new T.PlaneGeometry(40, 30)), keep(new T.ShadowMaterial({ opacity: 0.22 })));
-  catcher.rotation.x = -Math.PI / 2; catcher.position.y = -0.17; catcher.receiveShadow = true; scene.add(catcher);
+  /* ---------- Holztisch, auf dem die Matte liegt (füllt das ganze Bild) ---------- */
+  const woodTex = keep(new T.CanvasTexture(cv(512, 512, (c, w, h) => {
+    const boards = 4, bh = h / boards;
+    for (let b = 0; b < boards; b++) {
+      const base = [[168, 112, 63], [158, 104, 58], [176, 120, 70], [162, 108, 60]][b];
+      c.fillStyle = `rgb(${base.join(',')})`; c.fillRect(0, b * bh, w, bh);
+      for (let k = 0; k < 26; k++) { // Maserung
+        c.strokeStyle = `rgba(${k % 3 ? '90,55,25' : '210,160,100'},${0.08 + Math.random() * 0.12})`; c.lineWidth = 1 + Math.random() * 2;
+        const y0 = b * bh + Math.random() * bh, a = 2 + Math.random() * 5, f = 0.004 + Math.random() * 0.01, ph = Math.random() * 6;
+        c.beginPath(); for (let x = 0; x <= w; x += 8) c.lineTo(x, y0 + Math.sin(x * f + ph) * a); c.stroke();
+      }
+      if (Math.random() < 0.7) { const kx = Math.random() * w, ky = b * bh + bh * (0.3 + Math.random() * 0.4); c.fillStyle = 'rgba(90,50,20,.35)'; c.beginPath(); c.ellipse(kx, ky, 14, 6, 0, 0, 7); c.fill(); }
+      c.fillStyle = 'rgba(40,22,10,.55)'; c.fillRect(0, b * bh, w, 3); // Fuge
+    }
+  })));
+  woodTex.colorSpace = T.SRGBColorSpace; woodTex.wrapS = woodTex.wrapT = T.RepeatWrapping; woodTex.repeat.set(9, 9); woodTex.anisotropy = 8;
+  const table = new T.Mesh(keep(new T.PlaneGeometry(70, 70)), keep(new T.MeshStandardMaterial({ map: woodTex, roughness: 0.62, metalness: 0 })));
+  table.rotation.x = -Math.PI / 2; table.position.y = -0.165; table.receiveShadow = true; scene.add(table);
+  // Würfelbecher (Leder), Notizblock mit Stift, ein paar Münzen – sichtbar, wo neben der Matte Platz ist
+  const props = [];
+  {
+    const cup = new T.Group();
+    const leather = keep(new T.MeshStandardMaterial({ color: 0x7f1d1d, roughness: 0.75, side: T.DoubleSide }));
+    const wall = new T.Mesh(keep(new T.CylinderGeometry(0.78, 0.64, 1.55, 28, 1, true)), leather); wall.position.y = 0.6; wall.castShadow = true; cup.add(wall);
+    const bottom = new T.Mesh(keep(new T.CircleGeometry(0.64, 28)), leather); bottom.rotation.x = -Math.PI / 2; bottom.position.y = -0.16; cup.add(bottom);
+    const rim = new T.Mesh(keep(new T.TorusGeometry(0.78, 0.05, 8, 32)), keep(new T.MeshStandardMaterial({ color: 0xf5c518, metalness: 0.8, roughness: 0.3 }))); rim.rotation.x = Math.PI / 2; rim.position.y = 1.37; cup.add(rim);
+    scene.add(cup); props.push({ o: cup, y: 0, at: (W, D) => [W / 2 + 1.45, -D / 2 + 1.3] });
+    const pad = new T.Group();
+    const padTex = keep(new T.CanvasTexture(cv(256, 340, (c, w, h) => { c.fillStyle = '#fffdf5'; c.fillRect(0, 0, w, h); c.fillStyle = '#fde68a'; c.fillRect(0, 0, w, 40); c.strokeStyle = '#bfdbfe'; c.lineWidth = 2; for (let y = 70; y < h; y += 26) { c.beginPath(); c.moveTo(14, y); c.lineTo(w - 14, y); c.stroke(); } c.fillStyle = '#1e3a8a'; c.font = '700 22px Lexend, sans-serif'; c.fillText('Du    Robo', 26, 92); c.fillStyle = '#334155'; c.fillText('I        I', 34, 118); })));
+    padTex.colorSpace = T.SRGBColorSpace;
+    const sheet = new T.Mesh(keep(new T.BoxGeometry(1.5, 0.08, 2)), [0, 1, 2, 3, 4, 5].map((i) => keep(i === 2 ? new T.MeshStandardMaterial({ map: padTex, roughness: 0.9 }) : new T.MeshStandardMaterial({ color: 0xf1ece0, roughness: 0.9 })))); sheet.castShadow = true; sheet.receiveShadow = true; pad.add(sheet);
+    const pencil = new T.Mesh(keep(new T.CylinderGeometry(0.06, 0.06, 1.6, 6)), keep(new T.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.6 }))); pencil.rotation.set(0, 0, Math.PI / 2); pencil.position.set(0.15, 0.1, 1.2); pencil.castShadow = true; pad.add(pencil);
+    const tip = new T.Mesh(keep(new T.ConeGeometry(0.06, 0.2, 6)), keep(new T.MeshStandardMaterial({ color: 0xe7c9a0 }))); tip.rotation.z = -Math.PI / 2; tip.position.set(1.05, 0.1, 1.2); pad.add(tip);
+    pad.rotation.y = 0.35; scene.add(pad); props.push({ o: pad, y: -0.125, at: (W, D) => [-W / 2 - 1.5, D / 2 - 1.6] });
+    const coinsG = new T.Group();
+    const cg = keep(new T.CylinderGeometry(0.3, 0.3, 0.07, 24)), cm = keep(new T.MeshStandardMaterial({ color: 0xffcf33, metalness: 0.85, roughness: 0.3, emissive: 0x553300, emissiveIntensity: 0.25 }));
+    for (let i = 0; i < 6; i++) { const m = new T.Mesh(cg, cm); m.position.set((i % 3) * 0.04, -0.125 + i * 0.075, 0); m.castShadow = true; coinsG.add(m); }
+    for (let i = 0; i < 3; i++) { const m = new T.Mesh(cg, cm); m.position.set(0.7 + i * 0.35, -0.125, 0.3 - i * 0.2); m.rotation.y = i; m.castShadow = true; coinsG.add(m); }
+    scene.add(coinsG); props.push({ o: coinsG, y: 0, at: (W, D) => [-W / 2 - 1.3, -D / 2 + 1.4] });
+  }
 
   /* ---------- Würfel ---------- */
   const S = 1.1, H = S / 2;
@@ -105,7 +145,7 @@ function dc3Mount(T, host) {
   function fit() {
     const r = host.getBoundingClientRect(), w = Math.max(1, r.width), h = Math.max(1, r.height);
     renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
-    const nl = camera.aspect < 1.2 ? LAYOUTS.port : LAYOUTS.land;
+    const nl = camera.aspect < 0.95 ? LAYOUTS.port : camera.aspect < 1.4 ? LAYOUTS.square : LAYOUTS.land;
     if (nl !== L || !L.mesh.visible) { L.mesh.visible = false; L = nl; L.mesh.visible = true; dice.flat().forEach((d) => { setHome(d); if (!d.anim) d.m.position.copy(d.home); }); }
     const { W, D } = L;
     // Blickwinkel: je höher die Fläche im Verhältnis zur Matte, desto mehr von oben (füllt den Platz besser)
@@ -114,8 +154,9 @@ function dc3Mount(T, host) {
     const v = new T.Vector3(), look = new T.Vector3(0, 0, 0.2);
     const place = (dist) => { camera.position.set(0, Math.sin(tilt) * dist, look.z + Math.cos(tilt) * dist); camera.lookAt(look); camera.updateMatrixWorld(); };
     let lo = 3, hi = 80;
-    for (let k = 0; k < 26; k++) { const m = (lo + hi) / 2; place(m); if (pts.every((q) => { v.copy(q).project(camera); return Math.abs(v.x) < 0.97 && Math.abs(v.y) < 0.93; })) hi = m; else lo = m; }
+    for (let k = 0; k < 26; k++) { const m = (lo + hi) / 2; place(m); if (pts.every((q) => { v.copy(q).project(camera); return Math.abs(v.x) < 0.9 && Math.abs(v.y) < 0.86; })) hi = m; else lo = m; }
     place(hi);
+    props.forEach((pr) => { const [x, z] = pr.at(W, D); pr.o.position.set(x, pr.y, z); v.set(x, 0.3, z).project(camera); pr.o.visible = Math.abs(v.x) < 0.97 && Math.abs(v.y) < 0.97; });
     // Schilder auf die Matte: links die Namen, rechts die Ergebnisse, in der Mitte rechts die Zielzahl
     const at = (x, z) => { v.set(x, 0, z).project(camera); return [(v.x * 0.5 + 0.5) * w, (-v.y * 0.5 + 0.5) * h]; };
     const put = (sel, x, z, right, below) => { const el = host.querySelector(sel); if (!el) return; const [px, py] = at(x, z); el.style.left = right ? 'auto' : `${px}px`; el.style.right = right ? `${w - px}px` : 'auto'; el.style.top = below ? `${py}px` : 'auto'; el.style.bottom = below ? 'auto' : `${h - py}px`; };
@@ -124,7 +165,7 @@ function dc3Mount(T, host) {
     put('.dc-lab.me', -W / 2 + 0.5, D / 2 - 0.45, false, false);
     put('.dc-res.me', W / 2 - 0.5, D / 2 - 0.45, true, false);
     const coin = host.querySelector('.dc-target');
-    if (coin) { const [px, py] = at(W / 2 - (L === LAYOUTS.port ? 1.05 : 1.3), 0); coin.style.left = `${px}px`; coin.style.top = `${py}px`; }
+    if (coin) { const [px, py] = at(W / 2 - (L === LAYOUTS.land ? 1.3 : 1.1), 0); coin.style.left = `${px}px`; coin.style.top = `${py}px`; }
   }
   const ro = new ResizeObserver(fit); ro.observe(host); fit();
 

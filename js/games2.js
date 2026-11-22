@@ -1194,7 +1194,7 @@ function startDice(opts = {}) {
   const rows = practiceSettings().reihen.slice();
   Object.assign(game, { dc: { rows, pts: [0, 0], round: 0, phase: 'roll', me: null, cpu: null, rerolled: false, target: 0, ok: 0, wrong: 0, t: null, typing: g2Typing(), typed: '' }, over: false });
   $('#view').innerHTML = gameShell('dice', `
-    <div class="dc-play">
+    <div class="dc-play ${game.dc.typing ? 'typing' : ''}">
     <div class="dc-score"><span class="dc-p me">Du <b id="dcme">0</b></span><span class="dc-vs">bis ${DC_WIN}</span><span class="dc-p cpu"><b id="dccpu">0</b> Robo 🤖</span><button type="button" class="dc-q" data-action="dc-help" aria-label="So geht's">?</button></div>
     ${opts.three ? '' : '<div class="dc-target"><small>Zielzahl</small><b id="dctarget">?</b></div>'}
     ${opts.three ? `<div class="dc-mat3" id="dcmat"><div class="dc-target"><small>Ziel</small><b id="dctarget">?</b></div>

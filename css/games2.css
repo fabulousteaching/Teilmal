@@ -722,7 +722,8 @@ button.dc-die[data-action]:hover { transform: translateY(-3px); }
 @media (max-width: 600px) { .mz3-pit { bottom: 150px; } }
 
 /* Würfel-Duell 3D: eine Filzmatte, auf der echte Würfel rollen (js/dice3d.js) */
-.dc-mat3 { grid-area: table; position: relative; width: 100%; max-width: 860px; height: auto; aspect-ratio: 1.5; max-height: clamp(240px, calc(100dvh - 420px), 640px); min-height: 220px; margin: 2px auto 0; color: #fff; touch-action: manipulation; }
+.dc-mat3 { grid-area: table; position: relative; width: 100%; height: 420px; min-height: 220px; margin: 2px auto 0; border-radius: 22px; overflow: hidden; background: #4a3322; box-shadow: var(--shadow-card); color: #fff; touch-action: manipulation; }
+.dc-mat3::after { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; border-radius: inherit; background: radial-gradient(ellipse at 50% 42%, transparent 58%, rgba(40, 20, 6, .42)); }
 .dc3-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .dc-mat3 .dc-lab, .dc-mat3 .dc-res { position: absolute; z-index: 2; padding: 4px 11px; border-radius: 14px; background: rgba(6, 50, 26, .55); backdrop-filter: blur(3px); font-weight: 800; pointer-events: none; }
 .dc-mat3 .dc-lab { font-size: .78rem; letter-spacing: .04em; }
@@ -735,8 +736,8 @@ button.dc-die[data-action]:hover { transform: translateY(-3px); }
 .dc-chips { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
 .dc-rr { position: absolute; left: 0; top: 0; padding: 5px 10px; border: 0; border-radius: 999px; background: #fef08a; color: #713f12; font: 800 .78rem var(--font-body, sans-serif); box-shadow: 0 6px 14px -6px rgba(0, 0, 0, .6); pointer-events: auto; cursor: pointer; touch-action: manipulation; white-space: nowrap; }
 .dc-rr:hover { background: #fde047; }
-@media (max-width: 520px) { .dc-mat3 { aspect-ratio: 1.25; max-height: clamp(240px, calc(100dvh - 450px), 520px); } .dc-mat3 .dc-res { padding: 3px 9px; } .dc-mat3 .dc-res b { font-size: 1.15rem; } .dc-mat3 .dc-res small { font-size: .66rem; } .dc-mat3 .dc-lab { font-size: .66rem; } }
-@media (max-height: 560px) and (orientation: landscape) { .dc-mat3 { grid-area: table; aspect-ratio: auto; max-height: none; height: calc(100dvh - 150px); min-height: 200px; } }
+@media (max-width: 520px) { .dc-mat3 { border-radius: 16px; } .dc-mat3 .dc-res { padding: 3px 9px; } .dc-mat3 .dc-res b { font-size: 1.15rem; } .dc-mat3 .dc-res small { font-size: .66rem; } .dc-mat3 .dc-lab { font-size: .66rem; } }
+@media (max-height: 560px) and (orientation: landscape) { .dc-mat3 { grid-area: table; min-height: 200px; } }
 .dc-mat3 .dc-target { position: absolute; z-index: 2; width: clamp(64px, 11vmin, 104px); height: clamp(64px, 11vmin, 104px); margin: 0; transform: translate(-50%, -50%); pointer-events: none; }
 .dc-mat3 .dc-target b { font-size: clamp(1.5rem, 4.4vmin, 2.5rem); margin-top: -8px; }
 .dc-mat3 .dc-target small { margin-top: 8px; font-size: .55rem; }
@@ -747,7 +748,7 @@ button.dc-die[data-action]:hover { transform: translateY(-3px); }
   .game-dice .dc-play:has(.dc-mat3) { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr); grid-template-areas: "table score" "table ctrl"; grid-template-rows: auto 1fr; column-gap: 18px; align-items: start; }
   .game-dice .dc-play:has(.dc-mat3) .dc-score { grid-area: score; margin-top: 4px; }
   .game-dice .dc-play:has(.dc-mat3) .dc-ctrl { grid-area: ctrl; margin-top: 4px; }
-  .game-dice .dc-mat3 { max-width: none; aspect-ratio: auto; max-height: none; height: clamp(320px, calc(100dvh - 200px), 760px); }
+  .game-dice .dc-mat3 { max-width: none; }
 }
 
 /* ---------------- Spielfeld so gross wie möglich (fitStage in js/games.js) ---------------- */
@@ -780,3 +781,14 @@ html.playing #view.view { max-width: 1720px; padding-block: 10px 12px; padding-i
 .mz3-ask.fin { left: 50%; right: auto; top: 12px; bottom: auto; transform: translateX(-50%); max-width: calc(100% - 20px); }
 .mz3-ask.fin .mz3-q { font-size: clamp(1.3rem, 5.4vw, 2.4rem); }
 .mz3-ask.fin small { font-size: .75rem; opacity: .95; }
+/* Würfel-Duell: Platz für die Bedienung reservieren, damit der Tisch zwischen den Spielphasen gleich gross bleibt */
+.game-dice .dc-play:has(.dc-mat3) .dc-ctrl { min-height: 212px; align-content: start; }
+.game-dice .dc-play.typing:has(.dc-mat3) .dc-ctrl { min-height: 262px; }
+@media (max-width: 520px) { .game-dice .dc-play:has(.dc-mat3) .dc-line { max-height: 80px; } .game-dice .dc-play:has(.dc-mat3) .dc-ctrl { gap: 6px; margin-top: 8px; } }
+@media (min-aspect-ratio: 6/5) and (min-width: 900px) and (min-height: 561px) { .game-dice .dc-play:has(.dc-mat3) .dc-ctrl { min-height: 0; } }
+@media (max-height: 560px) and (orientation: landscape) { .game-dice .dc-play:has(.dc-mat3) .dc-ctrl { min-height: 0; } }
+@media (max-height: 560px) and (orientation: landscape) {
+  .game-dice .dc-play:has(.dc-mat3) { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); grid-template-areas: "score ctrl" "table ctrl"; column-gap: 12px; row-gap: 4px; }
+  .game-dice .dc-play:has(.dc-mat3) .dc-score { flex-wrap: nowrap; white-space: nowrap; gap: 8px; font-size: .85rem; }
+  .game-dice .dc-play:has(.dc-mat3) .dc-score .dc-vs { font-size: .62rem; }
+}

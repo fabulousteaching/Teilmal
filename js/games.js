@@ -105,6 +105,7 @@ const FIT_STAGES = [
   { sel: '#snstage', min: 220, aspect: 'auto' },
   { sel: '#memgrid', min: 260 },
   { sel: '#pztable', min: 240, cells: true },
+  { sel: '#dcmat', min: 180 },
 ];
 let fitRaf = 0;
 function fitStage(sync = false) {
