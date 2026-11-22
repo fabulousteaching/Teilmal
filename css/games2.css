@@ -776,3 +776,7 @@ html.playing #view.view { max-width: 1720px; padding-block: 10px 12px; padding-i
 
 /* Aufgaben-Anzeigen: feste Feldgrösse, einzeilig – lange Aufgaben werden kleiner (js/fitword.js) */
 .rn-q, .mz3-q, .ship-task, .pb-task { flex-wrap: nowrap !important; white-space: nowrap; overflow: hidden; max-width: min(92vw, 640px); }
+/* Labyrinth: Schlussmeldung an der Schatzkiste immer mittig und ganz lesbar */
+.mz3-ask.fin { left: 50%; right: auto; top: 12px; bottom: auto; transform: translateX(-50%); max-width: calc(100% - 20px); }
+.mz3-ask.fin .mz3-q { font-size: clamp(1.3rem, 5.4vw, 2.4rem); }
+.mz3-ask.fin small { font-size: .75rem; opacity: .95; }

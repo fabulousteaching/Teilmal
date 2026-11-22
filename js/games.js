@@ -348,6 +348,7 @@ function showRunResult(r) {
       <div class="result">
         <p class="run-mode-tag">${GAME_MODES[r.mode].icon()} ${GAME_MODES[r.mode].name} · ${esc(OP_INFO[practiceSettings().op][0])}</p>
         ${stars(st)}<h2>${title}</h2><p class="result-line">${line}</p>
+        ${r.coinWon ? `<p class="pill good">🪙 +${r.coinWon} Münze für deinen Avatar-Shop!</p>` : ''}
         ${rec && old != null ? '<p class="pill good">Neuer persönlicher Rekord!</p>' : old != null ? `<p class="muted small">Dein Rekord: ${fmtScore(old, lower)}</p>` : ''}
         ${r.best >= 5 ? `<p class="muted small">Längste Serie: ${r.best} richtige hintereinander</p>` : ''}
         ${wrongs.length ? `<div class="mistakes"><p class="label">Merk dir</p><ul>${wrongs.map((t) => `<li><span class="m-task">${esc(taskText(t, true))}</span></li>`).join('')}</ul></div>` : ''}

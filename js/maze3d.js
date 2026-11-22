@@ -2,7 +2,8 @@
  *
  * Ein grosser Heckengarten auf einem Raster, jedes Mal neu erzeugt. Der Weg zum Schatz windet sich hindurch; an Kreuzungen
  * stehen drei magische Tore, über jedem eine Antwort-Blase. Hinter JEDEM Tor geht ein echter Gang weiter – nur das richtige
- * Tor führt zum Schatz (eine Lichtsäule über den Hecken zeigt, wo er ungefähr liegt). Breite Gänge mit Fallen:
+ * Tor führt zur Schatzkiste (eine Lichtsäule über den Hecken zeigt, wo sie ungefähr liegt; am Ziel geht der Deckel auf,
+ * Münzen springen heraus, und Kinder mit Login bekommen 1 echte Münze für den Avatar-Shop). Breite Gänge mit Fallen:
  * Löcher im Boden (eine Rechnung lösen, dann kommen Bretter), Falltüren (klappen auf, man fällt hinein und startet am
  * letzten sicheren Ort). In Sackgassen: Belohnungen (Speed ⚡ Turbo, Sanduhr ⏳ +5 s, Survive ❤️ +1 Leben)
  * oder Deko (Brunnen, Spiegelkugel, Bank, Blumentöpfe, Pilze).
@@ -142,6 +143,7 @@ function mz3Maze(N, G) {
 async function startMaze3D() {
   const T = await w3Three();
   await w3LoadEngine();
+  if (typeof rnBuilder !== 'function') await w3LoadRunner(); // Voxel-Baukasten für die Schatzkiste
   const mode = gameModeOf('maze');
   const cfg = MZ3[mode] || MZ3.speed;
   const M = mz3Maze(cfg.N, cfg.G);
@@ -436,23 +438,85 @@ async function startMaze3D() {
     else { for (let k = 0; k < 4; k++) { const x = (Math.random() - 0.5) * 1.4, z = (Math.random() - 0.5) * 0.9, s = 0.7 + Math.random() * 0.7; add(decoGeo.stem, stemMat, x, 0.14 * s, z, s, s, s); add(decoGeo.cap, capMat, x, 0.26 * s, z, s, s, s); } }
   }
 
-  /* ---------- Schatz am Ende mit Lichtsäule ---------- */
+  /* ---------- Schatz am Ende: prächtige Schatzkiste (wie beim Brückenbau in Vokaboom) mit Lichtsäule ----------
+     Voxel-Holzkiste mit Eisenbändern, goldenen Ecken und Schloss, innen ein Berg Münzen mit zwei Edelsteinen.
+     Wer sie erreicht: Deckel geht auf, goldenes Licht, Münzen springen heraus. */
   const goal = P[P.length - 1];
   const chest = new T.Group();
-  const lid = new T.Group();
+  const vmats = vxMaterials(T);
+  const vox = (build, opts) => { const B = rnBuilder(); build(B); return keep(rnGeo(T, B, opts)); };
+  const vmesh = (g) => { const m = new T.Mesh(g, vmats); m.castShadow = true; m.receiveShadow = true; return m; };
+  const vrand = (i) => { const x = Math.sin(i * 127.1) * 43758.5453; return x - Math.floor(x); };
+  const CU = 0.055; // Grösse eines Klötzchens
+  const lidPivot = new T.Group();
+  const chestGold = new T.PointLight(0xffd54a, 0, 6);
+  const coinGeo = keep(new T.CylinderGeometry(0.15, 0.15, 0.035, 20));
+  const coinMat = keep(new T.MeshStandardMaterial({ color: 0xffcf33, metalness: 0.9, roughness: 0.25, emissive: 0x553300, emissiveIntensity: 0.3 }));
+  const coins = [];
   {
-    const wood = keep(new T.MeshStandardMaterial({ color: 0x92400e, roughness: 0.7 })), gold = keep(new T.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.8, roughness: 0.3, emissive: 0x6b4f00, emissiveIntensity: 0.5 }));
-    const body = new T.Mesh(boxGeo, wood); body.scale.set(1.3, 0.75, 0.85); body.position.y = 0.38; chest.add(body);
-    const band = new T.Mesh(boxGeo, gold); band.scale.set(1.34, 0.12, 0.89); band.position.y = 0.55; chest.add(band);
-    lid.position.set(0, 0.75, -0.42); chest.add(lid);
-    const lm = new T.Mesh(boxGeo, gold); lm.scale.set(1.36, 0.22, 0.9); lm.position.set(0, 0.11, 0.45); lid.add(lm);
-    const gemMat = keep(new T.MeshStandardMaterial({ color: 0x67e8f9, emissive: 0x0891b2, emissiveIntensity: 0.8, roughness: 0.1, metalness: 0.3 }));
-    const gemG = keep(new T.OctahedronGeometry(0.16, 0));
-    for (let i = 0; i < 5; i++) { const gm = new T.Mesh(gemG, gemMat); gm.position.set(-0.4 + i * 0.2, 0.82, (i % 2) * 0.1); chest.add(gm); }
-    chest.position.set(cx(goal), 0, cz(goal)); chest.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    const wood = (x, y, z) => rnShade(0x8b5a2b, ((Math.floor((x + 20) / 4) % 2) ? 0.06 : -0.04) + (vrand(x * 7 + y * 3 + z) - 0.5) * 0.06);
+    const body = vmesh(vox((B) => {
+      B.box(-12, 0, -8, 12, 14, 8, wood);
+      B.box(-11, 13, -7, 11, 14, 7, 0x3a2412);                                   // dunkler Rand innen
+      for (const x of [-12, -4, 4, 12]) B.box(x, 0, -8, x, 14, 8, 0x4a4a55, 3);   // Eisenbänder
+      for (const [x, z] of [[-12, -8], [12, -8], [-12, 8], [12, 8]]) for (const y of [0, 14]) B.ell(x, y, z, 1.6, 1.6, 1.6, 0xf5c518, { mat: 3 }); // goldene Ecken
+      B.box(-3, 7, 8, 3, 13, 9, 0xf5c518, 3); B.box(-1, 8, 9, 1, 11, 10, 0x2a1a0a);  // Schloss
+    }, { u: CU, iter: 2 }));
+    chest.add(body);
+    const pile = vmesh(vox((B) => {
+      B.ell(0, 13, 0, 10, 4, 6, (x, y, z) => ((x + y + z) % 3 ? 0xffd54a : 0xf5b400), { mat: 3, keep: (x, y) => y >= 13 });
+      for (let k = 0; k < 8; k++) B.ell(-8 + k * 2.2, 16 + (k % 2), (k % 3) - 1, 1.6, 0.6, 1.6, 0xffe680, { mat: 3 });
+      B.ell(4, 17, 1, 1.5, 1.5, 1.5, 0x3ad6ff, { mat: 1 }); B.ell(-5, 17, -1, 1.3, 1.3, 1.3, 0xff4d6d, { mat: 1 });
+    }, { u: CU, iter: 2 }));
+    chest.add(pile);
+    lidPivot.position.set(0, 14 * CU, -8 * CU); chest.add(lidPivot);
+    const lidM = vmesh(vox((B) => {
+      B.tube('x', -12, 12, 8, 0, 8, wood, { keep: (x, y) => y >= 0 });
+      for (const x of [-12, -4, 4, 12]) B.tube('x', x, x, 8, 0, 8.4, 0x4a4a55, { mat: 3, keep: (xx, y) => y >= 0 });
+      B.box(-3, 0, 15, 3, 4, 17, 0xf5c518, 3);
+    }, { u: CU, iter: 2 }));
+    lidPivot.add(lidM);
+    chestGold.position.set(0, 1.3, 0.3); chest.add(chestGold);
+    // Kiste schaut zum Weg, auf dem man kommt (Schloss vorne)
+    const prev = P[P.length - 2] ?? goal;
+    chest.position.set(cx(goal), 0, cz(goal));
+    chest.rotation.y = Math.atan2(cx(prev) - cx(goal), cz(prev) - cz(goal));
     scene.add(chest);
     const beam = new T.Mesh(keep(new T.CylinderGeometry(0.7, 1.1, 70, 20, 1, true)), keep(new T.MeshBasicMaterial({ color: 0xfde68a, transparent: true, opacity: 0.32, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide, fog: false })));
     beam.position.set(cx(goal), 35, cz(goal)); scene.add(beam); chest.userData.beam = beam;
+  }
+  /** Kiste öffnen: Deckel auf, Goldschein, Münzen springen heraus */
+  function openChest() {
+    chest.userData.open = 0.0001;
+    const th = chest.rotation.y, fx = Math.sin(th), fz = Math.cos(th), sx2 = Math.cos(th), sz2 = -Math.sin(th);
+    S.fin = { k: 0, x0: S.x, z0: S.z, x1: chest.position.x + sx2 * 1.05 + fx * 0.55, z1: chest.position.z + sz2 * 1.05 + fz * 0.55,
+      cam: new T.Vector3(chest.position.x + fx * 2.9 + sx2 * 0.5, 1.75, chest.position.z + fz * 2.9 + sz2 * 0.5),
+      look: new T.Vector3(chest.position.x + sx2 * 0.45, 0.45, chest.position.z + sz2 * 0.45), face: th + 0.45 };
+    const top = new T.Vector3(); chest.localToWorld(top.set(0, 0.8, 0));
+    for (let i = 0; i < 28; i++) {
+      const m = new T.Mesh(coinGeo, coinMat); m.castShadow = true; m.position.copy(top); scene.add(m);
+      const a = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 2.2;
+      coins.push({ m, v: new T.Vector3(Math.cos(a) * sp, 4 + Math.random() * 3.5, Math.sin(a) * sp), spin: 8 + Math.random() * 12, wait: 0.35 + i * 0.012 });
+      m.visible = false;
+    }
+    tone([523, 659, 784, 1047, 1319], 0.08, 'triangle', 0.07);
+  }
+  function stepChest(dt) {
+    const o = chest.userData.open;
+    if (!o) return;
+    const k = Math.min(1, o + dt / 0.7); chest.userData.open = k;
+    const e = 1 - Math.pow(1 - k, 3);
+    lidPivot.rotation.x = -e * 1.95; chestGold.intensity = e * 4;
+    for (const c of coins) {
+      if (c.rest) continue;
+      if (c.wait > 0) { c.wait -= dt; continue; }
+      c.m.visible = true;
+      c.v.y -= 9.5 * dt; c.m.position.addScaledVector(c.v, dt); c.m.rotation.x += c.spin * dt; c.m.rotation.z += c.spin * 0.6 * dt;
+      if (c.m.position.y < 0.03 && c.v.y < 0) {
+        if (Math.abs(c.v.y) > 1.2) { c.v.y *= -0.35; c.v.x *= 0.6; c.v.z *= 0.6; if (Math.random() < 0.3) tone([2093 + Math.random() * 600], 0.03, 'sine', 0.02); }
+        else { c.rest = true; c.m.position.y = 0.035; c.m.rotation.set(0, Math.random() * 6, 0); }
+      }
+    }
   }
 
   /* ---------- Schmetterlinge ---------- */
@@ -745,10 +809,14 @@ async function startMaze3D() {
     if (g && g.q && GATE_MS && !g.solved && performance.now() > g.q.deadline) gateTimeout(g);
     // Schatz
     if (S.gi >= GN && Math.hypot(S.x - cx(goal), S.z - cz(goal)) < 1.4) {
-      S.done = true; fig.setAnim('cheer'); sfx.win(); confetti();
-      $('#mz3q').innerHTML = '💎 Schatz gefunden!'; const a2 = $('#mz3ask'); a2.hidden = false; a2.className = 'mz3-ask ok pop';
+      S.done = true; fig.setAnim('cheer'); openChest();
+      setTimeout(() => { sfx.win(); confetti(); }, 450);
+      const coin = typeof isKid === 'function' && isKid() && typeof avatarEarnCoins === 'function';
+      $('#mz3q').innerHTML = '💎 Schatz gefunden!'; const a2 = $('#mz3ask'); a2.hidden = false; a2.className = 'mz3-ask ok pop fin';
       $('#mz3clock') && ($('#mz3clock').hidden = true);
-      setTimeout(() => runFinish('done'), 1100);
+      if (coin) game.run.coinWon = 1;
+      { const h = $('#mz3hint'); if (h) h.textContent = coin ? 'Geschafft! +1 🪙 für deinen Avatar' : 'Geschafft!'; const hp = $('#mz3help'); if (hp) hp.style.display = 'none'; const jy = $('#mz3joy'); if (jy) jy.style.visibility = 'hidden'; }
+      S.fin.coin = coin; // Münze und Ergebnis folgen im Schlussblick (nach Spielzeit, auch auf langsamen Geräten)
     }
   }
 
@@ -795,6 +863,15 @@ async function startMaze3D() {
     camLook.set(S.x - sx * 6, 0.8 - nearK * 0.1, S.z - sz * 6);
     camera.lookAt(camLook);
     wrap.visible = S.camDist > 1.0 && !(S.inv > 0 && Math.sin(S.t * 30) > 0.3 && !S.fall);
+    if (S.fin) { // Schlussblick: Kamera vor die offene Kiste, die Figur steht daneben und jubelt
+      const f = S.fin; f.k = Math.min(1, f.k + dt / 0.9); f.t = (f.t || 0) + dt;
+      if (f.coin && !f.paid && f.t > 0.9) { f.paid = true; try { avatarEarnCoins(1, $('#mz3'), false); } catch (e) { console.warn('Münze', e); } }
+      if (!f.over && f.t > 3) { f.over = true; runFinish('done'); }
+      const e = f.k * f.k * (3 - 2 * f.k);
+      S.x = f.x0 + (f.x1 - f.x0) * e; S.z = f.z0 + (f.z1 - f.z0) * e;
+      wrap.position.set(S.x, 0, S.z); wrap.rotation.y = f.face; wrap.visible = true;
+      camera.position.lerp(f.cam, e); camLook.lerp(f.look, e); camera.lookAt(camLook);
+    }
     sun.position.set(S.x - 10, 20, S.z + 8); sun.target.position.set(S.x, 0, S.z);
     skyDome.position.set(S.x, 0, S.z);
     // Tore, Blasen, zuwachsende Hecken
@@ -824,9 +901,8 @@ async function startMaze3D() {
       f.g.rotation.y = -a;
       const flap = Math.sin(S.t * 16 + f.ph) * 1.0; f.l.rotation.y = flap; f.r.rotation.y = -flap; f.g.rotation.x = -1.2;
     }
-    chest.rotation.y += S.done ? 0 : dt * 0.5;
-    if (S.done && S.gi >= GN) lid.rotation.x = Math.max(-1.2, lid.rotation.x - dt * 3);
-    chest.userData.beam.material.opacity = 0.26 + Math.sin(S.t * 2) * 0.06;
+    stepChest(dt);
+    chest.userData.beam.material.opacity = S.fin ? Math.max(0, chest.userData.beam.material.opacity - dt * 0.8) : 0.26 + Math.sin(S.t * 2) * 0.06;
     drawMap();
     renderer.render(scene, camera);
   }
