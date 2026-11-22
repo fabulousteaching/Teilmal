@@ -430,6 +430,7 @@ function startSnake() {
     </div>
     <p class="mode-hint">Lenke die Schlange zum richtigen Ergebnis: Pfeiltasten ↑ ↓ ← →, Joystick oder Finger/Maus aufs Feld halten. Beisst sie sich selbst, ist das Spiel vorbei.</p>`);
   const st = $('#snstage'), cv = $('#sncv');
+  fitStage(true); // Feldform nach Bildschirm (hoch/quer) – danach bleibt sie fest
   const W = st.clientWidth, H = st.clientHeight;
   game.sn = { W, H, x: W * 0.3, y: H * 0.55, ang: 0, aim: null, turn: 0, keys: { l: 0, r: 0, u: 0, dn: 0 }, joy: { x: 0, y: 0 }, path: [], len: SN.LEN0, travel: 0, foods: [], t: null,
     skin: g2Pick(SN_SKINS), flash: 0, parts: [], floats: [], started: false, dead: false, last: 0, open: 0, tongue: 0 };
@@ -437,7 +438,8 @@ function startSnake() {
   snResize();
   const onResize = () => snResize();
   window.addEventListener('resize', onResize);
-  game.cleanups = [...(game.cleanups || []), () => window.removeEventListener('resize', onResize)];
+  const snRO = typeof ResizeObserver === 'function' ? new ResizeObserver(onResize) : null; snRO?.observe(st); // Spielfeld wächst mit dem Bildschirm (fitStage)
+  game.cleanups = [...(game.cleanups || []), () => { window.removeEventListener('resize', onResize); snRO?.disconnect(); }];
   // Lenken: Finger/Maus aufs Feld halten → die Schlange schwimmt dorthin
   const local = (e) => { const r = cv.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * game.sn.W, y: ((e.clientY - r.top) / r.height) * game.sn.H }; };
   let down = false;

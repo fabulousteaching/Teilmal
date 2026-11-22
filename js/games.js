@@ -88,11 +88,59 @@ function sparkle(el, n = 10) {
 }
 function gameShell(id, inner, controls = '') {
   const g = GAME_BY_ID[id];
+  fitStage(); setTimeout(fitStage, 350); setTimeout(fitStage, 1200); // im nächsten Bild und nochmals, wenn Schriften/Kopfzeile fertig sind
   return `<section class="mode game game-${id} c-${g.color}">
     <div class="mode-bar"><h1 class="mode-title">${esc(g.name)}</h1><div class="mode-controls">${controls}</div></div>
     ${inner}
   </section>`;
 }
+
+/* =========================================================
+   Spielfeld so gross wie möglich (alle Spiele, alle Geräte)
+   Höhe des Spielfelds = Fensterhöhe − alles darüber − alles darunter, damit nichts scrollt.
+   Spielfelder mit festem Seitenverhältnis (Schlange, Memory, Puzzle) wachsen mit, bis Breite oder Höhe voll ist.
+   ========================================================= */
+const FIT_STAGES = [
+  { sel: '.g3, .rn, .mz3, #tgstage, #twstage, #duel, #tfdeck', min: 300 },
+  { sel: '#snstage', min: 220, aspect: 'auto' },
+  { sel: '#memgrid', min: 260 },
+  { sel: '#pztable', min: 240, cells: true },
+];
+let fitRaf = 0;
+function fitStage(sync = false) {
+  cancelAnimationFrame(fitRaf);
+  const run = () => {
+    const v = document.getElementById('view');
+    if (v && fitRO && fitSeen !== v) { fitRO.observe(v); fitRO.observe(document.body); fitSeen = v; } // Bedienelemente/Kopfzeile ändern ihre Grösse → neu einpassen
+    const sec = document.querySelector('#view > .mode.game:not(.gate)');
+    const playing = !!sec && !sec.querySelector('.result');
+    document.documentElement.classList.toggle('playing', playing); // CSS: wenig Rand, breiter (games2.css)
+    if (!playing) return;
+    for (const f of FIT_STAGES) {
+      const st = sec.querySelector(f.sel);
+      if (!st) continue;
+      const view = $('#view'), r = st.getBoundingClientRect(), sr = sec.getBoundingClientRect();
+      const below = (sr.bottom - r.bottom) + parseFloat(getComputedStyle(view).paddingBottom || 0) + 4;
+      const avail = Math.floor(innerHeight - (r.top + scrollY) - below);
+      const h = Math.max(f.min, avail);
+      const pw = sr.width;
+      if (f.aspect) { const a = +st.dataset.fitAspect || (f.aspect === 'auto' ? Math.min(1.8, Math.max(0.72, pw / h)) : f.aspect); st.dataset.fitAspect = a; const w = Math.min(pw, h * a); st.style.width = `${Math.floor(w)}px`; st.style.maxWidth = 'none'; st.style.maxHeight = 'none'; st.style.height = `${Math.floor(w / a)}px`; }
+      else if (f.keep) { // Gitter mit festen Kartenformen: Breite so wählen, dass die Höhe passt
+        const k = r.width / Math.max(1, r.height), w = Math.min(pw, h * k);
+        if (Math.abs(w - r.width) > 2) { st.style.maxWidth = 'none'; st.style.width = `${Math.floor(w)}px`; }
+      } else if (f.cells) { // Puzzle: Zellgrösse aus Höhe und Breite
+        const cw = parseFloat(getComputedStyle(st).getPropertyValue('--cw')) || 40;
+        const k = Math.min(h / r.height, (pw - 4) / r.width), ncw = Math.max(22, Math.min(78, Math.floor(cw * k)));
+        if (Math.abs(ncw - cw) >= 1) st.style.setProperty('--cw', `${ncw}px`);
+      } else if (Math.abs(r.height - h) > 1) st.style.height = `${h}px`;
+      break;
+    }
+  };
+  if (sync) run(); else fitRaf = requestAnimationFrame(run);
+}
+const fitRO = typeof ResizeObserver === 'function' ? new ResizeObserver(() => fitStage()) : null;
+let fitSeen = null;
+window.addEventListener('resize', fitStage);
 
 /* =========================================================
    Spielmodi: gemeinsame Runde (Zeit, Leben, Fortschritt)

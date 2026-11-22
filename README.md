@@ -85,6 +85,10 @@ Bei **Elfmeter, Meteoriten, Frosch-Hüpfen, Zielscheibe und Stimmt das?** wählt
 
 Am Ende jedes Spiels sehen Kinder mit Klassen-Login die **Top 10 ihrer Klasse** – getrennt nach Spiel, Modus und Aufgabenart (z. B. „Meteoriten · Speed · Gemischt“). Jedes Kind erscheint nur einmal, mit seinem besten Ergebnis. Den **eigenen Rang** sieht man immer, auch wenn man nicht unter den ersten 10 ist. Lehrpersonen finden alle Bestenlisten in der Klassenübersicht. Ohne Login gibt es den persönlichen Rekord auf dem Gerät.
 
+### Spielfeld so gross wie möglich
+
+Sobald ein Spiel läuft, bekommt das **Spielfeld den ganzen Bildschirm** unter der Kopfzeile – auf jedem Gerät (Handy, Tablet hoch oder quer, PC): Der grosse Titel und der Hinweistext verschwinden (die Regeln stehen auf der Startkarte), die Ränder werden schmal, und eine gemeinsame Funktion (`fitStage` in `js/games.js`) rechnet die Höhe des Spielfelds aus: Fensterhöhe minus alles darüber (Kopfzeile, Leben/Zeit) minus alles darunter (Antwortknöpfe, Zahlenfeld). Nichts muss gescrollt werden. Ändern sich die Bedienelemente (z. B. andere Knöpfe in der nächsten Spielphase) oder das Fenster, passt sich das Feld sofort an. Spielfelder mit festem Seitenverhältnis wachsen mit, bis Breite oder Höhe voll ist: Die Zahlen-Schlange bekommt im Hochformat ein hohes, im Querformat ein breites Feld; beim 1×1-Tafel-Puzzle wachsen die Felder; Memory-Karten füllen die Fläche; bei Schiffe versenken stehen im Hochformat die zwei Meere übereinander. Burg verteidigen und Würfel-Duell haben ein eigenes Vollbild-Layout.
+
 ### Die Spiele
 
 | Spiel | Was passiert |
