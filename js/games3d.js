@@ -247,7 +247,8 @@ function noise(dur = 0.8, { freq = 1200, q = 0.6, gain = 0.12, sweep = 0 } = {})
   } catch { /* */ }
 }
 /* Torjubel: echte Aufnahme eines jubelnden Fussball-Publikums (audio/torjubel.mp3).
-   Quelle: «Crowd Cheer» von FoolBoyMedia, freesound.org/s/397434 – CC0 (gemeinfrei); gekürzt und ausgeblendet. */
+   Quelle: «Crowd Cheer» von FoolBoyMedia, freesound.org/s/397434 – CC0 (gemeinfrei); gekürzt und ausgeblendet.
+   Gespielt werden nur die ersten 1,3 Sekunden (danach ausgeblendet), damit der Jubel vor der nächsten Rechnung vorbei ist. */
 let CHEER_BUF = null, CHEER_LOADING = null;
 /** Aufnahme einmal laden (vor dem ersten Tor), damit der Jubel sofort kommt */
 function loadCheer() {
@@ -263,19 +264,25 @@ function loadCheer() {
     return CHEER_LOADING;
   } catch { return Promise.resolve(null); }
 }
-/** Das Publikum jubelt (Tor!) */
-function crowdCheer(gain = 0.9) {
+/** Das Publikum jubelt (Tor!) – kurz: nach gut einer Sekunde ausgeblendet, damit es nicht in die nächste Rechnung hineinklatscht */
+let CHEER_SRC = null;
+function crowdCheer(gain = 0.9, dur = 1.3) {
   if (!db.settings.sound) return;
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const play = (buf) => {
       if (!buf) return;
+      try { CHEER_SRC?.stop(); } catch { /* */ }
       const src = audioCtx.createBufferSource();
       src.buffer = buf;
-      const g = audioCtx.createGain(); g.gain.value = gain;
+      const g = audioCtx.createGain(), t0 = audioCtx.currentTime;
+      g.gain.setValueAtTime(gain, t0);
+      g.gain.setValueAtTime(gain, t0 + dur * 0.55);
+      g.gain.linearRampToValueAtTime(0.0001, t0 + dur); // sanft ausblenden
       src.connect(g).connect(audioCtx.destination);
-      src.start();
+      src.start(t0); src.stop(t0 + dur + 0.05);
+      CHEER_SRC = src;
     };
     if (CHEER_BUF) play(CHEER_BUF); else loadCheer().then(play);
   } catch { /* */ }
