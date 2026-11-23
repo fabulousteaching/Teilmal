@@ -1467,3 +1467,7 @@ td.hard-chips { display: table-cell; }
 .kd-lock p { margin: 0; }
 .kd-lock .row { align-items: center; gap: .5rem; flex-wrap: wrap; }
 .lock-state { font-weight: 700; color: var(--red-ink); }
+
+/* Wechsel zwischen Vokaboom und Teilmal (oben rechts, erst wenn die Lehrperson beide Tools nutzt) */
+.tool-switch { display: inline-flex; align-items: center; gap: .35rem; margin-right: .35rem; white-space: nowrap; }
+@media (max-width: 560px) { .tool-switch .ts-name { display: none; } }
