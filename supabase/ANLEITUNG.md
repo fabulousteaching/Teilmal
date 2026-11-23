@@ -76,3 +76,11 @@ Kinder mit Login-Kärtchen gestalten unter **Mein Avatar** eine eigene Figur. Da
 
 **Einrichten:** `supabase/avatar.sql` einmal im SQL Editor ausführen (gilt für beide Tools). Details: `supabase/AVATAR.md`.
 
+
+## Wechsel zwischen Vokaboom und Teilmal
+
+- Der Knopf zum anderen Tool (oben rechts, z. B. „1×1 Teilmal“ bzw. „ABC Vokaboom“, und im Menü unter Konto) erscheint erst, wenn sich die Lehrperson **in beiden Tools mindestens einmal angemeldet** hat. Egal, in welchem Tool zuerst.
+- Solange sie nur ein Tool nutzt, gibt es keinen Wechsel – weder für sie noch für ihre Kinder.
+- Sobald sie beide Tools genutzt hat, können sie und alle ihre Kinder in beide Richtungen wechseln. Fehlt einem Kind das Login im anderen Tool, wird es beim ersten Wechsel dort angelegt (gleicher Benutzername, gleiche Bilder). Gibt es zur Klasse noch keine verbundene Klasse im anderen Tool, entsteht sie automatisch mit demselben Namen.
+- Hat die Lehrperson ein Kind im anderen Tool bewusst gelöscht, bekommt es dort kein neues Login.
+- Einrichten: `supabase/avatar.sql` und danach `supabase/einmaleins.sql` (Teilmal) in Supabase nochmals ganz ausführen. Wer schon Klassen oder Portionen hat, gilt im jeweiligen Tool als schon angemeldet.

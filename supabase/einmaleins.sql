@@ -408,14 +408,27 @@ begin
 end;
 $$;
 
+-- Hilfe: War die Lehrperson in beiden Tools angemeldet? (fab_teacher_tools aus avatar.sql; ältere Datenbank: wie bisher ja)
+create or replace function public.einmaleins_teacher_both(p_teacher uuid)
+returns boolean
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if to_regclass('public.fab_teacher_tools') is null then return true; end if;
+  return (select count(distinct t.tool) = 2 from public.fab_teacher_tools t where t.teacher_id = p_teacher);
+end;
+$$;
+
 -- Kind: mit dem Anmelde-Schlüssel des einen Tools im anderen anmelden (gemeinsames Anmelden auf demselben
 -- Gerät oder Knopf „zum anderen Tool“). p_from: 'vokaboom' oder 'einmaleins'.
--- Liefert {token, username} für das andere Tool oder null (Kind dort nicht vorhanden).
+-- Geht nur, wenn die Lehrperson in beiden Tools angemeldet war. Fehlt dem Kind das Login im anderen Tool, wird es
+-- dort angelegt (gleicher Benutzername, gleiche Bilder); gibt es noch keine verbundene Klasse, entsteht sie mit
+-- demselben Namen. Hat die Lehrperson das Kind im anderen Tool bewusst gelöscht (vbSkip), bleibt es draussen.
+-- Liefert {token, username} für das andere Tool oder null.
 create or replace function public.einmaleins_kid_bridge(p_from text, p_token uuid)
 returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
-  vid uuid; sid uuid; ecls uuid; vcls uuid; est public.einmaleins_students; tok uuid; uname text;
+  vid uuid; sid uuid; ecls uuid; vcls uuid; tch uuid; cname text; est public.einmaleins_students; tok uuid; uname text;
 begin
   if to_regclass('public.vokaboom_sessions') is null then return null; end if;
   if p_from = 'vokaboom' then
@@ -424,9 +437,15 @@ begin
     update public.vokaboom_sessions set last_seen = now() where token = p_token;
     select * into est from public.einmaleins_students e where e.vokaboom_id = vid;
     if est.id is null then
-      select s.class_id into vcls from public.vokaboom_students s where s.id = vid;
+      select s.class_id, c.teacher_id, c.name into vcls, tch, cname
+        from public.vokaboom_students s join public.vokaboom_classes c on c.id = s.class_id where s.id = vid;
+      if vcls is null or not public.einmaleins_teacher_both(tch) then return null; end if;
       ecls := public.einmaleins_linked_class(vcls, vid);
-      if ecls is null then return null; end if;
+      if ecls is null then
+        if exists (select 1 from public.einmaleins_classes c where c.vokaboom_class = vcls and c.teacher_id = tch) then return null; end if; -- bewusst ausgelassen
+        insert into public.einmaleins_classes (teacher_id, name, settings, vokaboom_class)
+          values (tch, cname, '{}'::jsonb, vcls) returning id into ecls;
+      end if;
       perform public.einmaleins_take_vokaboom_kid(ecls, vid);
       select * into est from public.einmaleins_students e where e.vokaboom_id = vid;
       if est.id is null then return null; end if;
@@ -439,7 +458,19 @@ begin
     update public.einmaleins_sessions set last_seen = now() where token = p_token;
     select e.vokaboom_id into vid from public.einmaleins_students e where e.id = sid;
     select s.username into uname from public.vokaboom_students s where s.id = vid;
-    if uname is null then return null; end if;
+    if uname is null then
+      select c.id, c.teacher_id, c.name, c.vokaboom_class into ecls, tch, cname, vcls
+        from public.einmaleins_students e join public.einmaleins_classes c on c.id = e.class_id where e.id = sid;
+      if ecls is null or not public.einmaleins_teacher_both(tch) then return null; end if;
+      if vcls is null or not exists (select 1 from public.vokaboom_classes c where c.id = vcls and c.teacher_id = tch) then
+        insert into public.vokaboom_classes (teacher_id, name) values (tch, cname) returning id into vcls;
+        update public.einmaleins_classes set vokaboom_class = vcls where id = ecls;
+      end if;
+      perform public.einmaleins_push_kid(sid, vcls);
+      select e.vokaboom_id into vid from public.einmaleins_students e where e.id = sid;
+      select s.username into uname from public.vokaboom_students s where s.id = vid;
+      if uname is null then return null; end if;
+    end if;
     insert into public.vokaboom_sessions (student_id) values (vid) returning token into tok;
     return jsonb_build_object('token', tok, 'username', uname);
   end if;
@@ -447,25 +478,28 @@ begin
 end;
 $$;
 
--- Kind: Gibt es mich auch im anderen Tool? (für den Knopf „zum anderen Tool“)
+-- Kind: Darf ich ins andere Tool wechseln? (für den Knopf „zum anderen Tool“)
+-- Ja, sobald die Lehrperson in beiden Tools angemeldet war (ausser sie hat das Kind im anderen Tool bewusst gelöscht).
 create or replace function public.einmaleins_kid_linked(p_from text, p_token uuid)
 returns boolean
 language plpgsql stable security definer set search_path = '' as $$
 declare
-  vid uuid; sid uuid; vcls uuid;
+  vid uuid; sid uuid; vcls uuid; tch uuid;
 begin
   if to_regclass('public.vokaboom_sessions') is null then return false; end if;
   if p_from = 'vokaboom' then
     select x.student_id into vid from public.vokaboom_sessions x where x.token = p_token;
     if vid is null then return false; end if;
+    select s.class_id, c.teacher_id into vcls, tch from public.vokaboom_students s join public.vokaboom_classes c on c.id = s.class_id where s.id = vid;
+    if vcls is null or not public.einmaleins_teacher_both(tch) then return false; end if;
     if exists (select 1 from public.einmaleins_students e where e.vokaboom_id = vid) then return true; end if;
-    select s.class_id into vcls from public.vokaboom_students s where s.id = vid;
-    return public.einmaleins_linked_class(vcls, vid) is not null;
+    if public.einmaleins_linked_class(vcls, vid) is not null then return true; end if;
+    return not exists (select 1 from public.einmaleins_classes c where c.vokaboom_class = vcls and c.teacher_id = tch); -- sonst bewusst ausgelassen
   elsif p_from = 'einmaleins' then
     select x.student_id into sid from public.einmaleins_sessions x where x.token = p_token;
     if sid is null then return false; end if;
-    select e.vokaboom_id into vid from public.einmaleins_students e where e.id = sid;
-    return vid is not null and exists (select 1 from public.vokaboom_students s where s.id = vid);
+    select c.teacher_id into tch from public.einmaleins_students e join public.einmaleins_classes c on c.id = e.class_id where e.id = sid;
+    return tch is not null and public.einmaleins_teacher_both(tch);
   end if;
   return false;
 end;
@@ -484,7 +518,7 @@ begin
   select * into cl from public.einmaleins_classes c where c.id = st.class_id;
   select p.data into pr from public.einmaleins_progress p where p.student_id = st.id;
   return jsonb_build_object(
-    'student', jsonb_build_object('first', st.first_name, 'initial', st.last_initial, 'username', st.username, 'vokaboom', st.vokaboom_id is not null),
+    'student', jsonb_build_object('first', st.first_name, 'initial', st.last_initial, 'username', st.username, 'vokaboom', public.einmaleins_kid_linked('einmaleins', p_token)),
     'class', jsonb_build_object('name', cl.name, 'settings', cl.settings),
     'progress', coalesce(pr, '{}'::jsonb)
   );
@@ -613,7 +647,8 @@ grant execute on function public.einmaleins_score(uuid, text, integer) to anon, 
 grant execute on function public.einmaleins_class_board(uuid, text) to authenticated;
 
 revoke execute on function public.einmaleins_new_username(), public.einmaleins_linked_class(uuid, uuid),
-  public.einmaleins_take_vokaboom_kid(uuid, uuid), public.einmaleins_push_kid(uuid, uuid) from public, anon, authenticated;
+  public.einmaleins_take_vokaboom_kid(uuid, uuid), public.einmaleins_push_kid(uuid, uuid),
+  public.einmaleins_teacher_both(uuid) from public, anon, authenticated;
 revoke execute on function public.einmaleins_add_students(uuid, jsonb), public.einmaleins_import_vokaboom(uuid, uuid),
   public.einmaleins_sync_vokaboom(uuid, uuid, boolean) from public, anon;
 grant execute on function public.einmaleins_add_students(uuid, jsonb), public.einmaleins_import_vokaboom(uuid, uuid),

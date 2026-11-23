@@ -112,7 +112,8 @@ async function kidRefresh() {
     throw error;
   }
   kid.first = data.student?.first || ''; kid.initial = data.student?.initial || ''; kid.cls = data.class?.name || '';
-  kid.username = data.student?.username || kid.username; kid.vb = !!data.student?.vokaboom;
+  kid.username = data.student?.username || kid.username;
+  if (kid.vb !== !!data.student?.vokaboom) { kid.vb = !!data.student?.vokaboom; setTimeout(renderAccountSlot, 0); }
   kid.settings = cleanClassSettings(data.class?.settings);
   const local = db.prog;
   const localDirty = kid.sent !== progHash(local) && local.q > 0;

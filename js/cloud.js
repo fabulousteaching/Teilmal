@@ -48,7 +48,7 @@ async function cloudClient() {
   });
   return cloud.client;
 }
-function setCloudUser(user) { cloud.uid = user.id; cloud.user = user.email || ''; }
+function setCloudUser(user) { cloud.uid = user.id; cloud.user = user.email || ''; setTimeout(toolSeen, 0); }
 function forgetCloudUser() {
   cloud.uid = ''; cloud.user = '';
   if (typeof klass === 'object') Object.assign(klass, { list: [], students: {}, progress: {}, loaded: false, error: '' });
@@ -171,6 +171,9 @@ window.addEventListener('focus', () => ssoCheck());
 
 /* ---------- Oberfläche ---------- */
 function accountButtonHTML() {
+  return toolSwitchHTML() + accountButtonCore();
+}
+function accountButtonCore() {
   if (!isKid() && typeof menuButtonHTML === 'function') return menuButtonHTML(); // ein Knopf „Menü“ mit Konto drin
   if (isKid()) return kidAccountButtonHTML();
   if (cloud.user) {
@@ -312,7 +315,7 @@ function accountSectionHTML() {
     <p class="muted small">Deine Klassen und die Kinder-Logins sind in deinem Konto gespeichert${SSO.DOMAIN ? '. In Vokaboom bist du auf diesem Gerät auch angemeldet' : ''}. Deine eigenen Übungen auf diesem Gerät bleiben nur hier gespeichert.</p>
     <div class="row">
       <button type="button" class="btn secondary" data-action="classes">${icon('users')} Klassen & Übersicht</button>
-      ${CLOUD_CFG.vokaboomUrl ? `<a class="btn ghost" href="${esc(CLOUD_CFG.vokaboomUrl)}"><span class="ot-tag">ABC</span> Zu Vokaboom</a>` : ''}
+      ${toolBoth() && CLOUD_CFG.vokaboomUrl ? '<button type="button" class="btn ghost" data-action="go-vokaboom"><span class="ot-tag">ABC</span> Zu Vokaboom</button>' : ''}
       <button type="button" class="btn ghost" data-action="logout">Abmelden</button>
     </div>
     <details class="pw-change"><summary>Passwort ändern</summary>
@@ -368,4 +371,33 @@ function bindAccountForms() {
     if (pw.length < 8) { err.textContent = 'Das Passwort braucht mindestens 8 Zeichen.'; return; }
     try { await cloudChangePassword(pw); err.textContent = ''; $('#pw-new').value = ''; toast('Passwort geändert.'); } catch (ex) { err.textContent = cloudErrorText(ex); }
   });
+}
+
+/* ---------- Wechsel zwischen Vokaboom und Teilmal ----------
+ * Den Knopf gibt es erst, wenn die Lehrperson in BEIDEN Tools mindestens einmal angemeldet war
+ * (fab_teacher_seen in supabase/avatar.sql). Dann wechseln Lehrperson und Kinder in beide Richtungen.
+ * Kinder: das Tool fragt die Datenbank (kid.vb), ob ihre Lehrperson beide Tools nutzt. */
+const TOOL_ME = 'teilmal';
+const toolBothKey = (uid) => `fab.tools.both.${uid}`;
+function toolBoth() {
+  if (isKid()) return !!kid.vb;
+  if (!cloud.uid) return false;
+  if (cloud.both === undefined) { try { cloud.both = localStorage.getItem(toolBothKey(cloud.uid)) === '1'; } catch { cloud.both = false; } }
+  return !!cloud.both;
+}
+/** Lehrperson angemeldet: dem Server melden „ich war in diesem Tool“; er sagt, ob sie in beiden Tools war */
+function toolSeen() {
+  const uid = cloud.uid;
+  if (!uid || cloud.toolSeenUid === uid) return;
+  cloud.toolSeenUid = uid; cloud.both = undefined;
+  cloudClient().then((c) => c.rpc('fab_teacher_seen', { p_tool: TOOL_ME })).then(({ data, error }) => {
+    if (error || cloud.uid !== uid) return;
+    const both = data === true;
+    try { localStorage.setItem(toolBothKey(uid), both ? '1' : '0'); } catch { /* egal */ }
+    if (both !== cloud.both) { cloud.both = both; renderAccountSlot(); }
+  }).catch(() => { cloud.toolSeenUid = ''; });
+}
+function toolSwitchHTML() {
+  if (!CLOUD_CFG.vokaboomUrl || !toolBoth()) return '';
+  return `<button class="btn small ghost tool-switch" data-action="go-vokaboom" title="Zu Vokaboom wechseln (Vokabeln üben)"><span class="ot-tag">ABC</span><span class="ts-name">Vokaboom</span></button>`;
 }
