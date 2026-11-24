@@ -295,7 +295,7 @@ function viewHome() {
     <div class="section-head"><h2>Üben</h2><p class="hint">Diese Übungen passen sich dir an.</p></div>
     <div class="tiles">${EXERCISES.map((x) => tileHTML(x, 'ex')).join('')}</div>
     <div class="section-head"><h2>Spielen</h2><p class="hint">${gamesFree() ? 'Für Lehrpersonen gratis zum Ausprobieren.' : `Jedes Spiel kostet ${GAME_COST} Münze. Münzen verdienst du beim Üben.`}</p></div>
-    <div class="tiles games">${GAMES.map((x) => tileHTML(x, 'game')).join('')}</div>
+    ${gamesAllLocked() ? '<p class="empty games-locked">🔒 Deine Lehrperson hat die Spiele gerade gesperrt. Üben geht weiter!</p>' : `<div class="tiles games">${gamesVisible().map((x) => tileHTML(x, 'game')).join('')}</div>`}
     ${typeof liveActions === 'object' ? `<div class="live-strip panel">
       <div><h2>📺 Live in der Klasse</h2><p class="hint">${isKid() ? 'Deine Lehrperson startet ein Live-Spiel am Beamer. Du machst mit dem Code oder QR-Code mit.' : 'Am Beamer starten, die Kinder machen auf ihren Geräten mit (Code oder QR-Code). Gratis, ohne Münzen.'}</p></div>
       <div class="row">${isKid() ? '' : '<button class="btn primary" data-action="live-host" data-kind="bingo">🔢 1×1-Bingo</button><button class="btn primary" data-action="live-host" data-kind="race">🏁 Avatar-Wettrennen</button><button class="btn primary" data-action="live-host" data-kind="build">🏰 Klassen-Bauprojekt</button>'}<button class="btn secondary" data-action="live-join">📲 Live-Spiel beitreten</button></div>

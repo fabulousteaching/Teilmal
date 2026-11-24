@@ -84,3 +84,11 @@ Kinder mit Login-Kärtchen gestalten unter **Mein Avatar** eine eigene Figur. Da
 - Sobald sie beide Tools genutzt hat, können sie und alle ihre Kinder in beide Richtungen wechseln. Fehlt einem Kind das Login im anderen Tool, wird es beim ersten Wechsel dort angelegt (gleicher Benutzername, gleiche Bilder). Gibt es zur Klasse noch keine verbundene Klasse im anderen Tool, entsteht sie automatisch mit demselben Namen.
 - Hat die Lehrperson ein Kind im anderen Tool bewusst gelöscht, bekommt es dort kein neues Login.
 - Einrichten: `supabase/avatar.sql` und danach `supabase/einmaleins.sql` (Teilmal) in Supabase nochmals ganz ausführen. Wer schon Klassen oder Portionen hat, gilt im jeweiligen Tool als schon angemeldet.
+
+## Spiele sperren (Menü → Spieleinstellungen)
+
+- **Menü → Spieleinstellungen** (oder Klasse → Reihen → „Spieleinstellungen“): Klasse wählen, dann
+  - **Ganze Klasse:** Frei · 🔒 Alle Spiele · Einzelne Spiele (die gesperrten Spiele antippen).
+  - **Einzelne Kinder:** pro Kind dieselbe Auswahl; kommt zur Klassen-Sperre dazu.
+- Die Kinder sehen gesperrte Spiele nicht mehr; sind alle gesperrt, steht bei „Spielen“: „Deine Lehrperson hat die Spiele gerade gesperrt. Üben geht weiter!“ Die Sperre kommt an, sobald das Kind Teilmal neu lädt.
+- Jede Spielrunde kostet 1 Münze, auch „Nochmals“.

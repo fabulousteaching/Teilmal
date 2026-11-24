@@ -1471,3 +1471,25 @@ td.hard-chips { display: table-cell; }
 /* Wechsel zwischen Vokaboom und Teilmal (oben rechts, erst wenn die Lehrperson beide Tools nutzt) */
 .tool-switch { display: inline-flex; align-items: center; gap: .35rem; margin-right: .35rem; white-space: nowrap; }
 @media (max-width: 560px) { .tool-switch .ts-name { display: none; } }
+
+/* Spiele sperren (Klasse) */
+.gl-panel { margin-top: 1rem; }
+.gl-panel .field { display: grid; gap: .45rem; }
+.gl-games { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .2rem; }
+.gl-game { display: inline-flex; align-items: center; gap: .3rem; padding: .35rem .65rem; border-radius: 99px; border: 1px solid var(--line, #e5e7eb); background: var(--surface, #fff); font: inherit; font-size: .88rem; cursor: pointer; }
+.gl-game.on { background: #FDE2E2; border-color: #F3A3A3; color: #8B1C1C; font-weight: 700; }
+.gl-kids { margin-top: .9rem; }
+.gl-kids > summary { cursor: pointer; font-weight: 700; }
+.gl-kid-list { list-style: none; margin: .6rem 0 0; padding: 0; display: grid; gap: .5rem; }
+.gl-kid { display: grid; grid-template-columns: minmax(140px, 1fr) auto; align-items: center; gap: .4rem .8rem; padding: .45rem .6rem; border-radius: 12px; background: var(--surface-2, rgba(0,0,0,.03)); }
+.gl-kid.locked { background: #FFF4F4; }
+.gl-kid .gl-games { grid-column: 1 / -1; }
+.gl-kid-name { font-weight: 600; }
+.games-locked { margin: .2rem 0 1rem; }
+@media (max-width: 560px) { .gl-kid { grid-template-columns: 1fr; } }
+
+/* Spieleinstellungen im Menü / Hinweis in der Klasse */
+.gl-note { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.gl-note h2 { margin: 0; }
+.menu .gl-panel { margin-top: .6rem; }
+.seg.wrap { flex-wrap: wrap; }

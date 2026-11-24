@@ -12,6 +12,7 @@ const MENU_SECTIONS = [
   ['uebersicht', 'users', 'Klassenübersicht'],
   ['klassen', 'image', 'Login-Kärtchen'],
   ['avatar', 'sparkle', 'Avatar & Münzen'],
+  ['spiele', 'grid', 'Spieleinstellungen'],
   ['rechnen', 'keypad', 'Rechnen'],
   ['anzeige', 'speaker', 'Ton & Darstellung'],
 ];
@@ -180,6 +181,7 @@ function menuSectionHTML(sec) {
           </div>
         </section>`;
     }
+    case 'spiele': return menuGamesHTML(needLogin);
     case 'rechnen':
       return `<div class="field"><span class="label">Malzeichen</span>${setSeg('sign', [['·', '7 · 8 (Malpunkt)'], ['×', '7 × 8 (Kreuz)']])}
           <p class="small muted">Der Malpunkt ist wie im Schweizer Zahlenbuch. Gilt für alle Übungen, Spiele und Übungsblätter.</p></div>
@@ -272,3 +274,19 @@ const menuActions = {
     menuRerender('uebersicht');
   },
 };
+
+/* ---------- Spieleinstellungen: Spiele sperren (ganze Klasse oder einzelne Kinder, alle oder einzelne Spiele) ---------- */
+function menuGamesHTML(needLogin) {
+  if (!cloud.user) return needLogin('Spieleinstellungen für deine Klassen');
+  if (!klass.loaded) { loadClasses().then(() => { const mb = document.getElementById('menu-body'); if (mb && MENU.sec === 'spiele') mb.innerHTML = menuSectionHTML('spiele'); }); return '<p class="muted"><span class="spinner"></span> Klassen werden geladen …</p>'; }
+  const list = klass.list || [];
+  if (!list.length) return '<p class="empty">Du hast noch keine Klasse.</p>';
+  if (!list.some((c) => c.id === MENU.glCls)) MENU.glCls = list[0].id;
+  const c = list.find((x) => x.id === MENU.glCls);
+  const lockTxt = (k) => { const st = k.settings || {}; const m = typeof lockMode === 'function' ? lockMode(st.lock) : 'none'; return m === 'all' ? ' 🔒' : m === 'some' || Object.keys(st.kidLock || {}).length ? ' ◐' : ''; };
+  return `<p class="small muted">Jede Spielrunde kostet die Kinder 1 Münze (auch „Nochmal“). Üben geht immer weiter, auch wenn Spiele gesperrt sind. Die Sperre kommt an, sobald ein Kind die Seite neu lädt.</p>
+    <div class="field"><span class="label">Klasse</span><div class="seg wrap" role="group" aria-label="Klasse">${list.map((k) => `<button type="button" class="seg-btn" data-action="menu-gl-cls" data-cls="${k.id}" aria-pressed="${k.id === c.id}">${esc(k.name)}${lockTxt(k)}</button>`).join('')}</div></div>
+    ${classLockHTML(c, { inMenu: true })}
+    `;
+}
+const menuGamesActions = { 'menu-gl-cls': (el) => { MENU.glCls = el.dataset.cls; const mb = document.getElementById('menu-body'); if (mb) mb.innerHTML = menuSectionHTML('spiele'); } };
