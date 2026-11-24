@@ -137,6 +137,7 @@ document.addEventListener('pointerdown', (e) => {
   lastFast = { el, t: performance.now() };
   actions[el.dataset.action]?.(el, e);
 });
+if (typeof menuGamesActions === 'object') Object.assign(actions, menuGamesActions); // Menü → Spieleinstellungen
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-action]');
   if (!el || el.disabled) return;

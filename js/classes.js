@@ -406,7 +406,12 @@ function cleanClassSettings(s) {
   const roundLen = [10, 15, 20, 30].includes(+o.roundLen) ? +o.roundLen : 20; // Rechnungen pro Runde
   // vbSkip: Kinder aus der verbundenen Vokaboom-Klasse, die nur in Einmaleins gelöscht wurden (nicht wieder holen)
   const vbSkip = Array.isArray(o.vbSkip) ? o.vbSkip.filter((x) => typeof x === 'string').slice(0, 200) : [];
-  return { big, reihen: reihen.length ? reihen : [...reihenFor(big)], ops, choose: o.choose !== false, roundLen, ...(vbSkip.length ? { vbSkip } : {}) };
+  // Spielsperre: lock = { m: 'all' | 'some', g: [Spiel-IDs] } (ganze Klasse), kidLock = { Benutzername: { m, g } }
+  const cleanLock = (l) => (l && l.m === 'all' ? { m: 'all' } : l && l.m === 'some' ? { m: 'some', g: (Array.isArray(l.g) ? l.g : []).filter((x) => typeof x === 'string').slice(0, 40) } : null);
+  const lock = cleanLock(o.lock);
+  const kidLock = {};
+  if (o.kidLock && typeof o.kidLock === 'object') Object.entries(o.kidLock).slice(0, 200).forEach(([u, l]) => { const v = cleanLock(l); if (v && /^[a-z]+[0-9]{2,4}$/.test(u)) kidLock[u] = v; });
+  return { big, reihen: reihen.length ? reihen : [...reihenFor(big)], ops, choose: o.choose !== false, roundLen, ...(vbSkip.length ? { vbSkip } : {}), ...(lock ? { lock } : {}), ...(Object.keys(kidLock).length ? { kidLock } : {}) };
 }
 
 async function loadClasses() {
@@ -688,7 +693,7 @@ function renderClass() {
   if (!klass.loaded) { v.innerHTML = '<p class="muted"><span class="spinner"></span> Wird geladen …</p>'; loadClasses().then(() => { if (ui.view === 'class') render(); autoSyncVokaboom(); }); return; }
   if (!c) { ui.view = 'classes'; render(); return; }
   const kids = studentsOf(c.id);
-  const body = klass.tab === 'kids' ? classKidsHTML(c, kids) : klass.tab === 'settings' ? classSettingsHTML(c) : klass.tab === 'cards' ? classCardsHTML(c, kids) : classOverviewHTML(c, kids);
+  const body = klass.tab === 'kids' ? classKidsHTML(c, kids) : klass.tab === 'settings' ? classSettingsHTML(c) + classLockNoteHTML(c) : klass.tab === 'cards' ? classCardsHTML(c, kids) : classOverviewHTML(c, kids);
   v.innerHTML = `<section class="class-view">
     <div class="mode-bar class-bar">
       <h1 class="mode-title">${esc(c.name)}</h1>
@@ -917,6 +922,68 @@ async function renameClass() {
     if (error) throw error;
     c.name = name; render();
   } catch (e) { toast(classErrorText(e), 'bad'); }
+}
+
+/* ---------- Spiele sperren: ganze Klasse oder einzelne Kinder, alle Spiele oder einzelne (wie in Vokaboom) ---------- */
+function lockMode(l) { return l && (l.m === 'all' || l.m === 'some') ? l.m : 'none'; }
+function lockGamesHTML(l, attrs) {
+  const off = new Set(l?.g || []);
+  return `<div class="gl-games">${GAMES.map((g) => `<button type="button" class="gl-game ${off.has(g.id) ? 'on' : ''}" ${attrs} data-game="${g.id}" aria-pressed="${off.has(g.id)}" title="${off.has(g.id) ? 'Gesperrt – antippen zum Freigeben' : 'Frei – antippen zum Sperren'}"><span aria-hidden="true">${g.art}</span>${esc(g.name)}${off.has(g.id) ? ' 🔒' : ''}</button>`).join('')}</div>`;
+}
+function classLockHTML(c, { inMenu = false } = {}) {
+  const st = c.settings || {}, cl = st.lock, cm = lockMode(cl), kids = studentsOf(c.id), kl = st.kidLock || {};
+  const seg = (attrs, mode) => `<div class="seg small" role="group">${[['none', 'Frei'], ['all', '🔒 Alle Spiele'], ['some', 'Einzelne Spiele']].map(([v, t]) => `<button type="button" class="seg-btn" ${attrs} data-v="${v}" aria-pressed="${mode === v}">${t}</button>`).join('')}</div>`;
+  const nKids = kids.filter((k) => lockMode(kl[k.username]) !== 'none').length;
+  const classTxt = cm === 'all' ? 'Alle Spiele sind für die ganze Klasse gesperrt. Üben geht weiter.' : cm === 'some' ? `${(cl.g || []).length} ${(cl.g || []).length === 1 ? 'Spiel ist' : 'Spiele sind'} für die ganze Klasse gesperrt.` : 'Alle Spiele sind frei.';
+  return `<div class="${inMenu ? 'menu-group' : 'panel'} gl-panel">
+    <h${inMenu ? 3 : 2}>🎮 Spiele sperren${inMenu ? '' : ''}</h${inMenu ? 3 : 2}>
+    <p class="hint">Gilt sofort beim nächsten Laden der Kinder. Üben geht immer weiter.</p>
+    <div class="field"><span class="label">Ganze Klasse</span>${seg(`data-action="glock-class" data-cls="${c.id}"`, cm)}
+      <small class="muted">${classTxt}</small>
+      ${cm === 'some' ? lockGamesHTML(cl, `data-action="glock-class-game" data-cls="${c.id}"`) : ''}</div>
+    ${kids.length ? `<details class="gl-kids" ${klass.glOpen || nKids ? 'open' : ''}><summary>Einzelne Kinder <small class="muted">(${nKids ? `${nKids} mit eigener Sperre` : 'keine eigene Sperre'})</small></summary>
+      ${cm === 'all' ? '<p class="small muted">Gerade sind für die ganze Klasse alle Spiele gesperrt – das gilt für alle Kinder.</p>' : ''}
+      <ul class="gl-kid-list">${kids.map((k) => {
+        const l = kl[k.username], m = lockMode(l);
+        return `<li class="gl-kid ${m !== 'none' ? 'locked' : ''}"><span class="gl-kid-name">${esc(kidName(k))}</span>
+          ${seg(`data-action="glock-kid" data-cls="${c.id}" data-kid="${esc(k.username)}"`, m)}
+          ${m === 'some' ? lockGamesHTML(l, `data-action="glock-kid-game" data-cls="${c.id}" data-kid="${esc(k.username)}"`) : ''}</li>`;
+      }).join('')}</ul>
+      <p class="small muted">Die Sperre eines Kindes kommt zur Klassen-Sperre dazu.</p></details>` : ''}
+  </div>`;
+}
+/** In der Klasse: kurzer Stand und Knopf zu Menü → Spieleinstellungen */
+function classLockNoteHTML(c) {
+  const st = c.settings || {}, cm = lockMode(st.lock), n = Object.keys(st.kidLock || {}).length;
+  const txt = cm === 'all' ? '🔒 Alle Spiele sind gesperrt' : cm === 'some' ? `🔒 ${(st.lock.g || []).length} ${(st.lock.g || []).length === 1 ? 'Spiel' : 'Spiele'} gesperrt` : 'Alle Spiele frei';
+  return `<div class="panel gl-note"><div><h2>🎮 Spiele</h2><p class="small muted">${txt}${n ? ` · ${n} ${n === 1 ? 'Kind' : 'Kinder'} mit eigener Sperre` : ''}</p></div>
+    <button type="button" class="btn secondary" data-action="glock-menu" data-cls="${c.id}">${icon('sliders')} Spieleinstellungen</button></div>`;
+}
+function lockSet(l, mode) { return mode === 'none' ? undefined : mode === 'all' ? { m: 'all' } : { m: 'some', g: l?.g || [] }; }
+function lockToggle(l, game) { const g = new Set(l?.g || []); if (g.has(game)) g.delete(game); else g.add(game); return { m: 'some', g: [...g] }; }
+/** Nach dem Ändern: Menü (Spieleinstellungen) oder Klassen-Ansicht neu zeichnen */
+function glockRefresh() {
+  const mb = document.getElementById('menu-body');
+  if (mb && typeof MENU === 'object' && MENU.sec === 'spiele') mb.innerHTML = menuSectionHTML('spiele'); else render();
+}
+const glockClassOf = (cid) => (cid && (klass.list || []).find((x) => x.id === cid)) || currentClass();
+function glockClass(mode, game, cid) {
+  const c = glockClassOf(cid); if (!c) return;
+  const v = game ? lockToggle(c.settings.lock, game) : lockSet(c.settings.lock, mode);
+  if (v) c.settings.lock = v; else delete c.settings.lock;
+  saveClassSettingsSoon(c, true);
+  if (!game) toast(mode === 'all' ? 'Alle Spiele für die Klasse gesperrt.' : mode === 'none' ? 'Spiele für die Klasse wieder frei.' : 'Tippe die Spiele an, die gesperrt sein sollen.');
+  glockRefresh();
+}
+function glockKid(user, mode, game, cid) {
+  const c = glockClassOf(cid); if (!c || !user) return;
+  const kl = c.settings.kidLock = c.settings.kidLock || {};
+  const v = game ? lockToggle(kl[user], game) : lockSet(kl[user], mode);
+  if (v) kl[user] = v; else delete kl[user];
+  if (!Object.keys(kl).length) delete c.settings.kidLock;
+  klass.glOpen = true;
+  saveClassSettingsSoon(c, true);
+  glockRefresh();
 }
 
 /* ---------- Reihen und Aufgabenarten der Klasse ---------- */
@@ -1573,6 +1640,11 @@ const classActions = {
   'cls-op': (el) => classSettingAction('op', el),
   'cls-size': (el) => classSettingAction('size', el),
   'cls-round': (el) => classSettingAction('round', el),
+  'glock-class': (el) => glockClass(el.dataset.v, null, el.dataset.cls),
+  'glock-class-game': (el) => glockClass('some', el.dataset.game, el.dataset.cls),
+  'glock-kid': (el) => glockKid(el.dataset.kid, el.dataset.v, null, el.dataset.cls),
+  'glock-kid-game': (el) => glockKid(el.dataset.kid, 'some', el.dataset.game, el.dataset.cls),
+  'glock-menu': (el) => { if (typeof openMenu === 'function') { MENU.glCls = el.dataset.cls || MENU.glCls; openMenu('spiele'); } },
   'kid-import': () => {
     const c = currentClass(), ta = $('#kid-import');
     const list = (ta?.value || '').split(/\r?\n/).map(parseKidLine).filter(Boolean);

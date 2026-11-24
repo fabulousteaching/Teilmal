@@ -57,7 +57,23 @@ function stopGame() {
   game.kart = null;
   game.pick = null; game.pickVal = null; game.over = true; game.run = null;
 }
-function openGame(id) { if (GAME_BY_ID[id]) go('game', { game: id }); }
+/* Spielsperre der Lehrperson (Klasse → Reihen & Spiele): ganze Klasse und einzelne Kinder (Benutzername) */
+function gameLockOf(settings, username) {
+  const st = settings || {}, out = new Set();
+  const add = (l) => { if (!l || typeof l !== 'object') return false; if (l.m === 'all') return true; if (l.m === 'some' && Array.isArray(l.g)) l.g.forEach((x) => out.add(x)); return false; };
+  if (add(st.lock)) return 'all';
+  if (username && add(st.kidLock?.[username])) return 'all';
+  return out;
+}
+const kidGameLock = () => (isKid() ? gameLockOf(kid.settings, kid.username) : new Set());
+const gamesAllLocked = () => kidGameLock() === 'all';
+const gamesVisible = () => { const lk = kidGameLock(); return lk === 'all' ? [] : GAMES.filter((g) => !lk.has(g.id)); };
+const gameLocked = (id) => !gamesVisible().some((g) => g.id === id);
+function openGame(id) {
+  if (!GAME_BY_ID[id]) return;
+  if (gameLocked(id)) { toast('🔒 Dieses Spiel ist gerade gesperrt.', 'bad'); return; }
+  go('game', { game: id });
+}
 function gamePicker(kinds = null) {
   const ps = practiceSettings();
   return createPicker(buildPool(ps, kinds));
@@ -538,6 +554,7 @@ async function startRunner3D() {
 }
 async function startGameNow() {
   if (game.paying) return;
+  if (gameLocked(ui.game)) { toast('🔒 Dieses Spiel ist gerade gesperrt.', 'bad'); go('home'); return; }
   if (!gamesFree() && kidWallet() && typeof w3PayGame === 'function') {
     // ein Konto: mit den Münzen aus der Datenbank bezahlen (offline: mit denen auf dem Gerät)
     game.paying = true;
